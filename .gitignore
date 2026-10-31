@@ -1,0 +1,6 @@
+/Project.toml
+/build/
+/.bender/
+__pycache__/
+*.log
+.DS_Store

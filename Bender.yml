@@ -1,0 +1,10 @@
+package:
+  name: axi
+  description: Reusable SystemVerilog AXI components
+
+dependencies:
+  common_cells:
+    { git: "https://github.com/dashygo097/common_cells.git", rev: main }
+  dicflow: { git: "https://github.com/dashygo097/dicflow.git", rev: main }
+
+sources: []
