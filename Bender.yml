@@ -7,4 +7,5 @@ dependencies:
     { git: "https://github.com/dashygo097/common_cells.git", rev: main }
   dicflow: { git: "https://github.com/dashygo097/dicflow.git", rev: main }
 
-sources: []
+sources:
+  - rtl/protocols/axi5_lite_if.sv
