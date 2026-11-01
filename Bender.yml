@@ -1,6 +1,6 @@
 package:
-  name: axi
-  description: Reusable SystemVerilog AXI components
+  name: amba
+  description: Reusable SystemVerilog AMBA components
 
 dependencies:
   common_cells:
