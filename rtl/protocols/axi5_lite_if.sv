@@ -1,4 +1,6 @@
-interface axi5_lite_if #(
+interface axi5_lite_if
+  import axi5_pkg::*;
+#(
     parameter int unsigned DATA_WIDTH     = 32,
     parameter int unsigned ADDR_WIDTH     = 32,
     // AXI5-Lite Data Bus Width Options
@@ -13,6 +15,9 @@ interface axi5_lite_if #(
     // AXI5-Lite User Options
     parameter bit          O_EN_USER      = 1'b0,
     parameter type         user_t         = logic,
+    parameter type         req_user_t     = user_t,
+    parameter type         data_user_t    = user_t,
+    parameter type         resp_user_t    = user_t,
     // AXI5-Lite Tracing Conditions
     parameter bit          C_EN_TRACE     = 1'b0,
     // AXI5-Lite Unique ID Options
@@ -24,48 +29,43 @@ interface axi5_lite_if #(
     // AXI5-Lite Parity Conditions
     parameter bit          C_EN_DATACHK   = 1'b0,
     parameter bit          C_EN_CTRLCHK   = 1'b0,
-    // AXI5-Lite User Type Options
-    parameter type         req_user_t     = user_t,
-    parameter type         data_user_t    = user_t,
-    parameter type         resp_user_t    = user_t,
     // AXI5-Lite Subsystem ID Options
     parameter int unsigned SUBSYSID_WIDTH = 0,
     // AXI5-Lite Write Strobe Options
     parameter bit          O_EN_STRB      = 1'b1,
     // AXI5-Lite Response Options
-    parameter int unsigned BRESP_WIDTH    = 2,
-    parameter int unsigned RRESP_WIDTH    = 2
+    parameter type         bresp_t        = resp_e,
+    parameter type         rresp_t        = resp_e
 ) (
     // GLOBAL
     input logic ACLK,
     input logic ARESETn
 );
 
-  localparam int unsigned STRB_WIDTH = DATA_WIDTH / 8;
-  localparam int unsigned POISON_WIDTH = (DATA_WIDTH + 63) / 64;
-  localparam int unsigned USER_REQ_WIDTH = O_EN_USER ? $bits(req_user_t) : 0;
-  localparam int unsigned USER_DATA_WIDTH = O_EN_USER ? $bits(data_user_t) : 0;
-  localparam int unsigned USER_RESP_WIDTH = O_EN_USER ? $bits(resp_user_t) : 0;
-  localparam bit EN_DATACHK = C_EN_DATACHK || C_EN_CTRLCHK;
+
+  localparam int unsigned StrbWidth = DATA_WIDTH / 8;
+  localparam int unsigned PoisonWidth = (DATA_WIDTH + 63) / 64;
+  localparam int unsigned UserReqWidth = O_EN_USER ? $bits(req_user_t) : 0;
+  localparam int unsigned UserDataWidth = O_EN_USER ? $bits(data_user_t) : 0;
+  localparam int unsigned UserRespWidth = O_EN_USER ? $bits(resp_user_t) : 0;
+  localparam bit EnDataChk = C_EN_DATACHK || C_EN_CTRLCHK;
 
   // OPTIONAL
-  localparam int unsigned ID_W_STORAGE_WIDTH = ID_W_WIDTH > 0 ? ID_W_WIDTH : 1;
-  localparam int unsigned ID_R_STORAGE_WIDTH = ID_R_WIDTH > 0 ? ID_R_WIDTH : 1;
-  localparam int unsigned SUBSYSID_STORAGE_WIDTH = SUBSYSID_WIDTH > 0 ? SUBSYSID_WIDTH : 1;
-  localparam int unsigned BRESP_STORAGE_WIDTH = BRESP_WIDTH > 0 ? BRESP_WIDTH : 1;
-  localparam int unsigned RRESP_STORAGE_WIDTH = RRESP_WIDTH > 0 ? RRESP_WIDTH : 1;
+  localparam int unsigned IdWStorageWidth = ID_W_WIDTH > 0 ? ID_W_WIDTH : 1;
+  localparam int unsigned IdRStorageWidth = ID_R_WIDTH > 0 ? ID_R_WIDTH : 1;
+  localparam int unsigned SubsysIdStorageWidth = SUBSYSID_WIDTH > 0 ? SUBSYSID_WIDTH : 1;
 
   // CONDITIONAL
-  localparam int unsigned ADDR_CHK_WIDTH = (ADDR_WIDTH + 7) / 8;
-  localparam int unsigned ID_W_CHK_BITS = (ID_W_WIDTH + int'(OO_EN_IDUNQ) + 7) / 8;
-  localparam int unsigned ID_R_CHK_BITS = (ID_R_WIDTH + int'(OO_EN_IDUNQ) + 7) / 8;
-  localparam int unsigned ID_W_CHK_WIDTH = ID_W_CHK_BITS > 0 ? ID_W_CHK_BITS : 1;
-  localparam int unsigned ID_R_CHK_WIDTH = ID_R_CHK_BITS > 0 ? ID_R_CHK_BITS : 1;
-  localparam int unsigned REQ_USER_CHK_WIDTH = ($bits(req_user_t) + 7) / 8;
-  localparam int unsigned DATA_USER_CHK_WIDTH = ($bits(data_user_t) + 7) / 8;
-  localparam int unsigned RESP_USER_CHK_WIDTH = ($bits(resp_user_t) + 7) / 8;
-  localparam int unsigned READ_USER_CHK_WIDTH = ($bits(data_user_t) + $bits(resp_user_t) + 7) / 8;
-  localparam int unsigned POISON_CHK_WIDTH = (DATA_WIDTH + 511) / 512;
+  localparam int unsigned AddrChkWidth = (ADDR_WIDTH + 7) / 8;
+  localparam int unsigned IdWChkBits = (ID_W_WIDTH + int'(OO_EN_IDUNQ) + 7) / 8;
+  localparam int unsigned IdRChkBits = (ID_R_WIDTH + int'(OO_EN_IDUNQ) + 7) / 8;
+  localparam int unsigned IdWChkWidth = IdWChkBits > 0 ? IdWChkBits : 1;
+  localparam int unsigned IdRChkWidth = IdRChkBits > 0 ? IdRChkBits : 1;
+  localparam int unsigned ReqUserChkWidth = ($bits(req_user_t) + 7) / 8;
+  localparam int unsigned DataUserChkWidth = ($bits(data_user_t) + 7) / 8;
+  localparam int unsigned RespUserChkWidth = ($bits(resp_user_t) + 7) / 8;
+  localparam int unsigned ReadUserChkWidth = ($bits(data_user_t) + $bits(resp_user_t) + 7) / 8;
+  localparam int unsigned PoisonChkWidth = (DATA_WIDTH + 511) / 512;
 
   // TYPES
   typedef struct packed {
@@ -81,19 +81,19 @@ interface axi5_lite_if #(
   logic AWVALID;
   logic AWREADY;
   logic [ADDR_WIDTH - 1:0] AWADDR;
-  logic [2:0] AWPROT;
-  logic [2:0] AWSIZE;
-  logic [ID_W_STORAGE_WIDTH - 1:0] AWID;
+  prot_t AWPROT;
+  size_e AWSIZE;
+  logic [IdWStorageWidth - 1:0] AWID;
   logic AWIDUNQ;
   req_user_t AWUSER;
   logic AWTRACE;
-  logic [SUBSYSID_STORAGE_WIDTH - 1:0] AWSUBSYSID;
+  logic [SubsysIdStorageWidth - 1:0] AWSUBSYSID;
   logic AWVALIDCHK;
   logic AWREADYCHK;
-  logic [ADDR_CHK_WIDTH - 1:0] AWADDRCHK;
-  logic [ID_W_CHK_WIDTH - 1:0] AWIDCHK;
+  logic [AddrChkWidth - 1:0] AWADDRCHK;
+  logic [IdWChkWidth - 1:0] AWIDCHK;
   logic AWCTLCHK0;
-  logic [REQ_USER_CHK_WIDTH - 1:0] AWUSERCHK;
+  logic [ReqUserChkWidth - 1:0] AWUSERCHK;
   logic AWTRACECHK;
   logic AWSUBSYSIDCHK;
 
@@ -101,50 +101,50 @@ interface axi5_lite_if #(
   logic WVALID;
   logic WREADY;
   logic [DATA_WIDTH - 1:0] WDATA;
-  logic [STRB_WIDTH - 1:0] WSTRB;
+  logic [StrbWidth - 1:0] WSTRB;
   data_user_t WUSER;
   logic WTRACE;
-  logic [POISON_WIDTH - 1:0] WPOISON;
+  logic [PoisonWidth - 1:0] WPOISON;
   logic WVALIDCHK;
   logic WREADYCHK;
-  logic [STRB_WIDTH - 1:0] WDATACHK;
-  logic [POISON_WIDTH - 1:0] WSTRBCHK;
-  logic [DATA_USER_CHK_WIDTH - 1:0] WUSERCHK;
-  logic [POISON_CHK_WIDTH - 1:0] WPOISONCHK;
+  logic [StrbWidth - 1:0] WDATACHK;
+  logic [PoisonWidth - 1:0] WSTRBCHK;
+  logic [DataUserChkWidth - 1:0] WUSERCHK;
+  logic [PoisonChkWidth - 1:0] WPOISONCHK;
   logic WTRACECHK;
 
   // B
   logic BVALID;
   logic BREADY;
-  logic [BRESP_STORAGE_WIDTH - 1:0] BRESP;
-  logic [ID_W_STORAGE_WIDTH - 1:0] BID;
+  bresp_t BRESP;
+  logic [IdWStorageWidth - 1:0] BID;
   logic BIDUNQ;
   resp_user_t BUSER;
   logic BTRACE;
   logic BVALIDCHK;
   logic BREADYCHK;
-  logic [ID_W_CHK_WIDTH - 1:0] BIDCHK;
+  logic [IdWChkWidth - 1:0] BIDCHK;
   logic BRESPCHK;
-  logic [RESP_USER_CHK_WIDTH - 1:0] BUSERCHK;
+  logic [RespUserChkWidth - 1:0] BUSERCHK;
   logic BTRACECHK;
 
   // AR
   logic ARVALID;
   logic ARREADY;
   logic [ADDR_WIDTH - 1:0] ARADDR;
-  logic [2:0] ARPROT;
-  logic [2:0] ARSIZE;
-  logic [ID_R_STORAGE_WIDTH - 1:0] ARID;
+  prot_t ARPROT;
+  size_e ARSIZE;
+  logic [IdRStorageWidth - 1:0] ARID;
   logic ARIDUNQ;
   req_user_t ARUSER;
   logic ARTRACE;
-  logic [SUBSYSID_STORAGE_WIDTH - 1:0] ARSUBSYSID;
+  logic [SubsysIdStorageWidth - 1:0] ARSUBSYSID;
   logic ARVALIDCHK;
   logic ARREADYCHK;
-  logic [ADDR_CHK_WIDTH - 1:0] ARADDRCHK;
-  logic [ID_R_CHK_WIDTH - 1:0] ARIDCHK;
+  logic [AddrChkWidth - 1:0] ARADDRCHK;
+  logic [IdRChkWidth - 1:0] ARIDCHK;
   logic ARCTLCHK0;
-  logic [REQ_USER_CHK_WIDTH - 1:0] ARUSERCHK;
+  logic [ReqUserChkWidth - 1:0] ARUSERCHK;
   logic ARTRACECHK;
   logic ARSUBSYSIDCHK;
 
@@ -152,19 +152,19 @@ interface axi5_lite_if #(
   logic RVALID;
   logic RREADY;
   logic [DATA_WIDTH - 1:0] RDATA;
-  logic [RRESP_STORAGE_WIDTH - 1:0] RRESP;
-  logic [ID_R_STORAGE_WIDTH - 1:0] RID;
+  rresp_t RRESP;
+  logic [IdRStorageWidth - 1:0] RID;
   logic RIDUNQ;
   r_user_t RUSER;
   logic RTRACE;
-  logic [POISON_WIDTH - 1:0] RPOISON;
+  logic [PoisonWidth - 1:0] RPOISON;
   logic RVALIDCHK;
   logic RREADYCHK;
-  logic [ID_R_CHK_WIDTH - 1:0] RIDCHK;
-  logic [STRB_WIDTH - 1:0] RDATACHK;
+  logic [IdRChkWidth - 1:0] RIDCHK;
+  logic [StrbWidth - 1:0] RDATACHK;
   logic RRESPCHK;
-  logic [READ_USER_CHK_WIDTH - 1:0] RUSERCHK;
-  logic [POISON_CHK_WIDTH - 1:0] RPOISONCHK;
+  logic [ReadUserChkWidth - 1:0] RUSERCHK;
+  logic [PoisonChkWidth - 1:0] RPOISONCHK;
   logic RTRACECHK;
 
   // SLAVE
@@ -235,10 +235,10 @@ interface axi5_lite_if #(
     if (ID_W_WIDTH > 32 || ID_R_WIDTH > 32)
       $fatal(1, "axi5_lite_if: ID_W_WIDTH and ID_R_WIDTH must be from 0 through 32");
     if (SUBSYSID_WIDTH > 8) $fatal(1, "axi5_lite_if: SUBSYSID_WIDTH must be from 0 through 8");
-    if (!(BRESP_WIDTH == 0 || BRESP_WIDTH == 2 || BRESP_WIDTH == 3))
-      $fatal(1, "axi5_lite_if: BRESP_WIDTH must be 0, 2, or 3");
-    if (!(RRESP_WIDTH == 0 || RRESP_WIDTH == 2 || RRESP_WIDTH == 3))
-      $fatal(1, "axi5_lite_if: RRESP_WIDTH must be 0, 2, or 3");
+    if (!($bits(bresp_t) == $bits(resp_e) || $bits(bresp_t) == $bits(bresp_e)))
+      $fatal(1, "axi5_lite_if: bresp_t must be 2 or 3 bits wide");
+    if (!($bits(rresp_t) == $bits(resp_e) || $bits(rresp_t) == $bits(rresp_e)))
+      $fatal(1, "axi5_lite_if: rresp_t must be 2 or 3 bits wide");
   end
 
 endinterface
