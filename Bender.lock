@@ -1,13 +1,13 @@
 packages:
   common_cells:
-    revision: 1106e3da8f3f99673cf6f211b37f83d57da7cee7
+    revision: c9ed748f8f89350561dae89b581c96b9fd931e27
     version: null
     source:
       Git: https://github.com/dashygo097/common_cells.git
     dependencies:
     - dicflow
   dicflow:
-    revision: 14eff49ec69bcfcc6284752a8de48a08ae60dc63
+    revision: 0213e2c5b3d311d18bf2154c481e3f5fe1c7b38e
     version: null
     source:
       Git: https://github.com/dashygo097/dicflow.git
