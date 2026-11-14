@@ -7,6 +7,10 @@ dependencies:
     { git: "https://github.com/dashygo097/common_cells.git", rev: main }
   dicflow: { git: "https://github.com/dashygo097/dicflow.git", rev: main }
 
+export_include_dirs:
+  - include
+
 sources:
   - rtl/pkgs/axi5_pkg.sv
-  - rtl/protocols/axi5_lite_if.sv
+  - rtl/protocols/**/*.sv
+  - rtl/endpoints/**/*.sv

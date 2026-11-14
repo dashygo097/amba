@@ -1,3 +1,5 @@
+`include "cc/assertions.svh"
+
 interface axi5_lite_if
   import axi5_pkg::*;
 #(
@@ -227,18 +229,15 @@ interface axi5_lite_if
   );
 
   // CHECKS
-  initial begin : check_parameters
-    if (DATA_WIDTH < 8 || DATA_WIDTH > 1024 || (DATA_WIDTH & (DATA_WIDTH - 1)) != 0)
-      $fatal(1, "axi5_lite_if: DATA_WIDTH must be a power of two from 8 through 1024");
-    if (ADDR_WIDTH < 1 || ADDR_WIDTH > 64)
-      $fatal(1, "axi5_lite_if: ADDR_WIDTH must be from 1 through 64");
-    if (ID_W_WIDTH > 32 || ID_R_WIDTH > 32)
-      $fatal(1, "axi5_lite_if: ID_W_WIDTH and ID_R_WIDTH must be from 0 through 32");
-    if (SUBSYSID_WIDTH > 8) $fatal(1, "axi5_lite_if: SUBSYSID_WIDTH must be from 0 through 8");
-    if (!($bits(bresp_t) == $bits(resp_e) || $bits(bresp_t) == $bits(bresp_e)))
-      $fatal(1, "axi5_lite_if: bresp_t must be 2 or 3 bits wide");
-    if (!($bits(rresp_t) == $bits(resp_e) || $bits(rresp_t) == $bits(rresp_e)))
-      $fatal(1, "axi5_lite_if: rresp_t must be 2 or 3 bits wide");
-  end
+  `ASSERT_INIT(DataWidthValid,
+               DATA_WIDTH >= 8 && DATA_WIDTH <= 1024 && (DATA_WIDTH & (DATA_WIDTH - 1)) == 0)
+  `ASSERT_INIT(AddressWidthValid, ADDR_WIDTH >= 1 && ADDR_WIDTH <= 64)
+  `ASSERT_INIT(WriteIdWidthValid, ID_W_WIDTH <= 32)
+  `ASSERT_INIT(ReadIdWidthValid, ID_R_WIDTH <= 32)
+  `ASSERT_INIT(SubsysIdWidthValid, SUBSYSID_WIDTH <= 8)
+  `ASSERT_INIT(BResponseWidthValid, $bits(bresp_t) == $bits(resp_e) || $bits(bresp_t) == $bits
+               (bresp_e))
+  `ASSERT_INIT(RResponseWidthValid, $bits(rresp_t) == $bits(resp_e) || $bits(rresp_t) == $bits
+               (rresp_e))
 
 endinterface
