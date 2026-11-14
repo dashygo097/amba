@@ -50,11 +50,13 @@ package axi5_pkg;
   } size_e;
 
   // PROT
-  typedef struct packed {
-    logic instruction;
-    logic non_secure;
-    logic privileged;
-  } prot_t;
+  typedef logic [2:0] prot_t;
+
+  typedef enum prot_t {
+    PROT_PRIVILEGED  = 3'b001,
+    PROT_NON_SECURE  = 3'b010,
+    PROT_INSTRUCTION = 3'b100
+  } prot_e;
 
   // LEN (TRANSFERS - 1)
   typedef logic [7:0] len_t;
