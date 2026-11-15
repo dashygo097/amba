@@ -10,10 +10,10 @@ package axi5_pkg;
 
   // AXI5 EXTENDED WRITE RESPONSE
   typedef enum logic [2:0] {
-    BRESP_OKAY        = 3'b000,
-    BRESP_EXOKAY      = 3'b001,
-    BRESP_SLVERR      = 3'b010,
-    BRESP_DECERR      = 3'b011,
+    BRESP_OKAY        = {1'b0, RESP_OKAY},
+    BRESP_EXOKAY      = {1'b0, RESP_EXOKAY},
+    BRESP_SLVERR      = {1'b0, RESP_SLVERR},
+    BRESP_DECERR      = {1'b0, RESP_DECERR},
     BRESP_DEFER       = 3'b100,
     BRESP_TRANSFAULT  = 3'b101,
     BRESP_UNSUPPORTED = 3'b111
@@ -21,10 +21,10 @@ package axi5_pkg;
 
   // AXI5 EXTENDED READ RESPONSE
   typedef enum logic [2:0] {
-    RRESP_OKAY       = 3'b000,
-    RRESP_EXOKAY     = 3'b001,
-    RRESP_SLVERR     = 3'b010,
-    RRESP_DECERR     = 3'b011,
+    RRESP_OKAY       = {1'b0, RESP_OKAY},
+    RRESP_EXOKAY     = {1'b0, RESP_EXOKAY},
+    RRESP_SLVERR     = {1'b0, RESP_SLVERR},
+    RRESP_DECERR     = {1'b0, RESP_DECERR},
     RRESP_PREFETCHED = 3'b100,
     RRESP_TRANSFAULT = 3'b101,
     RRESP_OKAYDIRTY  = 3'b110

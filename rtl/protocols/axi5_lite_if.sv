@@ -1,49 +1,44 @@
 `include "cc/assertions.svh"
 
-interface axi5_lite_if
-  import axi5_pkg::*;
-#(
-    parameter int unsigned DATA_WIDTH     = 32,
-    parameter int unsigned ADDR_WIDTH     = 32,
+interface axi5_lite_if #(
+    parameter  int unsigned DATA_WIDTH     = 32,
+    parameter  int unsigned ADDR_WIDTH     = 32,
     // AXI5-Lite Data Bus Width Options
-    parameter bit          O_EN_SIZE      = 1'b0,
+    parameter  bit          O_EN_SIZE      = 1'b0,
     // AXI5-Lite Prot Options
-    parameter bit          OI_EN_PROT     = 1'b0,
+    parameter  bit          OI_EN_PROT     = 1'b0,
     // AXI5-Lite ID Options
-    parameter bit          OO_EN_ID       = 1'b0,
-    parameter int unsigned ID_WIDTH       = 1,
-    parameter int unsigned ID_W_WIDTH     = OO_EN_ID ? ID_WIDTH : 0,
-    parameter int unsigned ID_R_WIDTH     = OO_EN_ID ? ID_WIDTH : 0,
+    parameter  bit          OO_EN_ID       = 1'b0,
+    parameter  int unsigned ID_WIDTH       = 1,
+    parameter  int unsigned ID_W_WIDTH     = OO_EN_ID ? ID_WIDTH : 0,
+    parameter  int unsigned ID_R_WIDTH     = OO_EN_ID ? ID_WIDTH : 0,
     // AXI5-Lite User Options
-    parameter bit          O_EN_USER      = 1'b0,
-    parameter type         user_t         = logic,
-    parameter type         req_user_t     = user_t,
-    parameter type         data_user_t    = user_t,
-    parameter type         resp_user_t    = user_t,
+    parameter  bit          O_EN_USER      = 1'b0,
+    parameter  type         req_user_t     = logic,
+    parameter  type         data_user_t    = logic,
+    parameter  type         resp_user_t    = logic,
+    // verilog_lint: waive typedef-structs-unions
+    localparam type         r_user_t       = struct packed {data_user_t data; resp_user_t resp;},
     // AXI5-Lite Tracing Conditions
-    parameter bit          C_EN_TRACE     = 1'b0,
+    parameter  bit          C_EN_TRACE     = 1'b0,
     // AXI5-Lite Unique ID Options
-    parameter bit          OO_EN_IDUNQ    = 1'b0,
+    parameter  bit          OO_EN_IDUNQ    = 1'b0,
     // AXI5-Lite Wakeup Options
-    parameter bit          O_EN_WAKEUP    = 1'b0,
+    parameter  bit          O_EN_WAKEUP    = 1'b0,
     // AXI5-Lite Poison Options
-    parameter bit          O_EN_POISON    = 1'b0,
+    parameter  bit          O_EN_POISON    = 1'b0,
     // AXI5-Lite Parity Conditions
-    parameter bit          C_EN_DATACHK   = 1'b0,
-    parameter bit          C_EN_CTRLCHK   = 1'b0,
+    parameter  bit          C_EN_DATACHK   = 1'b0,
+    parameter  bit          C_EN_CTRLCHK   = 1'b0,
     // AXI5-Lite Subsystem ID Options
-    parameter int unsigned SUBSYSID_WIDTH = 0,
+    parameter  int unsigned SUBSYSID_WIDTH = 0,
     // AXI5-Lite Write Strobe Options
-    parameter bit          O_EN_STRB      = 1'b1,
-    // AXI5-Lite Response Options
-    parameter type         bresp_t        = resp_e,
-    parameter type         rresp_t        = resp_e
+    parameter  bit          O_EN_STRB      = 1'b1
 ) (
     // GLOBAL
     input logic ACLK,
     input logic ARESETn
 );
-
 
   localparam int unsigned StrbWidth = DATA_WIDTH / 8;
   localparam int unsigned PoisonWidth = (DATA_WIDTH + 63) / 64;
@@ -66,14 +61,8 @@ interface axi5_lite_if
   localparam int unsigned ReqUserChkWidth = ($bits(req_user_t) + 7) / 8;
   localparam int unsigned DataUserChkWidth = ($bits(data_user_t) + 7) / 8;
   localparam int unsigned RespUserChkWidth = ($bits(resp_user_t) + 7) / 8;
-  localparam int unsigned ReadUserChkWidth = ($bits(data_user_t) + $bits(resp_user_t) + 7) / 8;
+  localparam int unsigned ReadUserChkWidth = ($bits(r_user_t) + 7) / 8;
   localparam int unsigned PoisonChkWidth = (DATA_WIDTH + 511) / 512;
-
-  // TYPES
-  typedef struct packed {
-    data_user_t data;
-    resp_user_t resp;
-  } r_user_t;
 
   // GLOBAL
   logic AWAKEUP;
@@ -83,8 +72,8 @@ interface axi5_lite_if
   logic AWVALID;
   logic AWREADY;
   logic [ADDR_WIDTH - 1:0] AWADDR;
-  prot_t AWPROT;
-  size_e AWSIZE;
+  axi5_pkg::prot_t AWPROT;
+  axi5_pkg::size_e AWSIZE;
   logic [IdWStorageWidth - 1:0] AWID;
   logic AWIDUNQ;
   req_user_t AWUSER;
@@ -118,7 +107,7 @@ interface axi5_lite_if
   // B
   logic BVALID;
   logic BREADY;
-  bresp_t BRESP;
+  axi5_pkg::bresp_e BRESP;
   logic [IdWStorageWidth - 1:0] BID;
   logic BIDUNQ;
   resp_user_t BUSER;
@@ -134,8 +123,8 @@ interface axi5_lite_if
   logic ARVALID;
   logic ARREADY;
   logic [ADDR_WIDTH - 1:0] ARADDR;
-  prot_t ARPROT;
-  size_e ARSIZE;
+  axi5_pkg::prot_t ARPROT;
+  axi5_pkg::size_e ARSIZE;
   logic [IdRStorageWidth - 1:0] ARID;
   logic ARIDUNQ;
   req_user_t ARUSER;
@@ -154,7 +143,7 @@ interface axi5_lite_if
   logic RVALID;
   logic RREADY;
   logic [DATA_WIDTH - 1:0] RDATA;
-  rresp_t RRESP;
+  axi5_pkg::rresp_e RRESP;
   logic [IdRStorageWidth - 1:0] RID;
   logic RIDUNQ;
   r_user_t RUSER;
@@ -235,9 +224,5 @@ interface axi5_lite_if
   `ASSERT_INIT(WriteIdWidthValid, ID_W_WIDTH <= 32)
   `ASSERT_INIT(ReadIdWidthValid, ID_R_WIDTH <= 32)
   `ASSERT_INIT(SubsysIdWidthValid, SUBSYSID_WIDTH <= 8)
-  `ASSERT_INIT(BResponseWidthValid, $bits(bresp_t) == $bits(resp_e) || $bits(bresp_t) == $bits
-               (bresp_e))
-  `ASSERT_INIT(RResponseWidthValid, $bits(rresp_t) == $bits(resp_e) || $bits(rresp_t) == $bits
-               (rresp_e))
 
 endinterface
