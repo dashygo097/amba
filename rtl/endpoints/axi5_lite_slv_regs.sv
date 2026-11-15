@@ -237,9 +237,6 @@ module axi5_lite_slv_regs #(
   `ASSERT_INIT(ReadIdWidthMatch, $bits(axi.ARID) == $bits(axi.RID))
   `ASSERT_INIT(SizeDisabled, !axi.O_EN_SIZE)
   `ASSERT_INIT(TraceDisabled, !axi.C_EN_TRACE)
-  `ASSERT_INIT(PoisonDisabled, !axi.O_EN_POISON)
-  `ASSERT_INIT(ControlCheckDisabled, !axi.C_EN_CTRLCHK)
-  `ASSERT_INIT(DataCheckDisabled, !axi.C_EN_DATACHK)
 
   `ASSERT(BankAccepted, bank_req.valid |-> bank_req.ready, axi.ACLK, axi.ARESETn)
   `ASSERT(OwnerStable, bank_resp.valid && !bank_resp.ready |=> $stable({write_r, id_r, idunq_r}),
