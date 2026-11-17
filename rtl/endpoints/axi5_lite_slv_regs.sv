@@ -28,14 +28,10 @@ module axi5_lite_slv_regs #(
     localparam type resp_t = `CC_REG_BANK_RESP_TYPE(data_t),
 
     // USER TYPES
-    parameter type req_user_t = logic,
-    parameter type data_user_t = logic,
-    parameter type resp_user_t = logic,
-    // verilog_lint: waive typedef-structs-unions
-    localparam type r_user_t = struct packed {
-      data_user_t data;
-      resp_user_t resp;
-    }
+    parameter  type req_user_t  = logic,
+    parameter  type data_user_t = logic,
+    parameter  type resp_user_t = logic,
+    localparam type r_user_t    = `AMBA_AXI5_LITE_R_USER_TYPE(data_user_t, resp_user_t)
 ) (
     axi5_lite_if.sink axi
 );
@@ -78,7 +74,8 @@ module axi5_lite_slv_regs #(
   always_comb begin
     aw_in = '{
         addr: axi.AWADDR,
-        id: axi.ID_W_WIDTH > 0 ? IdWidth'(axi.AWID) : '0,
+        size: axi5_pkg::size_e'(0),
+        id: axi.ID_W_WIDTH > 0 ? WriteIdWidth'(axi.AWID) : '0,
         idunq: axi.OO_EN_IDUNQ && axi.AWIDUNQ,
         default: '0
     };
@@ -107,7 +104,8 @@ module axi5_lite_slv_regs #(
   always_comb begin
     ar_in = '{
         addr: axi.ARADDR,
-        id: axi.ID_R_WIDTH > 0 ? IdWidth'(axi.ARID) : '0,
+        size: axi5_pkg::size_e'(0),
+        id: axi.ID_R_WIDTH > 0 ? ReadIdWidth'(axi.ARID) : '0,
         idunq: axi.OO_EN_IDUNQ && axi.ARIDUNQ,
         default: '0
     };
@@ -137,7 +135,7 @@ module axi5_lite_slv_regs #(
         strb: select_write ? w.strb : '0
     };
 
-    id_d = select_write ? aw.id : ar.id;
+    id_d = select_write ? IdWidth'(aw.id) : IdWidth'(ar.id);
     idunq_d = select_write ? aw.idunq : ar.idunq;
   end
 
@@ -200,10 +198,8 @@ module axi5_lite_slv_regs #(
 
   always_comb begin
     b_out = b_resp.payload;
-    axi.BRESP = b_out.resp;
-    axi.BID = b_out.id;
-    axi.BIDUNQ = b_out.idunq;
-    axi.BVALID = b_resp.valid;
+    `AMBA_AXI5_LITE_UNPACK_B(axi, b_out)
+    axi.BVALID   = b_resp.valid;
     b_resp.ready = axi.BREADY;
   end
 
@@ -219,11 +215,8 @@ module axi5_lite_slv_regs #(
 
   always_comb begin
     r_out = r_resp.payload;
-    axi.RDATA = r_out.data;
-    axi.RRESP = r_out.resp;
-    axi.RID = r_out.id;
-    axi.RIDUNQ = r_out.idunq;
-    axi.RVALID = r_resp.valid;
+    `AMBA_AXI5_LITE_UNPACK_R(axi, r_out)
+    axi.RVALID   = r_resp.valid;
     r_resp.ready = axi.RREADY;
   end
 

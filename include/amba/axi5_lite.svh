@@ -14,67 +14,66 @@
 //     `AMBA_AXI5_LITE_PACK_AW(aw_in, axi)
 //   end
 
-// AW
-`define AMBA_AXI5_LITE_AW_TYPE(_bus, _user_t) \
+`define AMBA_AXI5_LITE_AW_PAYLOAD_TYPE(_addr_width, _id_width, _subsys_width, _user_t) \
   struct packed { \
-    logic [$bits(_bus.AWADDR) - 1:0] addr; \
+    logic [(_addr_width)-1:0] addr; \
     axi5_pkg::prot_t prot; \
     axi5_pkg::size_e size; \
-    logic [$bits(_bus.AWID) - 1:0] id; \
+    logic [(_id_width)-1:0] id; \
     logic idunq; \
     _user_t user; \
     logic trace; \
-    logic [$bits(_bus.AWSUBSYSID) - 1:0] subsys_id; \
+    logic [(_subsys_width)-1:0] subsys_id; \
   }
 
-// W
-`define AMBA_AXI5_LITE_W_TYPE(_bus, _user_t) \
+`define AMBA_AXI5_LITE_W_PAYLOAD_TYPE(_data_width, _user_t) \
   struct packed { \
-    logic [$bits(_bus.WDATA) - 1:0] data; \
-    logic [$bits(_bus.WSTRB) - 1:0] strb; \
+    logic [(_data_width)-1:0] data; \
+    logic [(_data_width)/8-1:0] strb; \
     _user_t user; \
     logic trace; \
   }
 
-// B
-`define AMBA_AXI5_LITE_B_TYPE(_bus, _user_t) \
+`define AMBA_AXI5_LITE_B_PAYLOAD_TYPE(_id_width, _user_t) \
   struct packed { \
     axi5_pkg::bresp_e resp; \
-    logic [$bits(_bus.BID) - 1:0] id; \
+    logic [(_id_width)-1:0] id; \
     logic idunq; \
     _user_t user; \
     logic trace; \
   }
 
-// AR
-`define AMBA_AXI5_LITE_AR_TYPE(_bus, _user_t) \
-  struct packed { \
-    logic [$bits(_bus.ARADDR) - 1:0] addr; \
-    axi5_pkg::prot_t prot; \
-    axi5_pkg::size_e size; \
-    logic [$bits(_bus.ARID) - 1:0] id; \
-    logic idunq; \
-    _user_t user; \
-    logic trace; \
-    logic [$bits(_bus.ARSUBSYSID) - 1:0] subsys_id; \
-  }
+`define AMBA_AXI5_LITE_AR_PAYLOAD_TYPE(_addr_width, _id_width, _subsys_width, _user_t) \
+  `AMBA_AXI5_LITE_AW_PAYLOAD_TYPE(_addr_width, _id_width, _subsys_width, _user_t)
 
-// R
 `define AMBA_AXI5_LITE_R_USER_TYPE(_data_user_t, _resp_user_t) \
   struct packed { \
     _data_user_t data; \
     _resp_user_t resp; \
   }
 
-`define AMBA_AXI5_LITE_R_TYPE(_bus, _user_t) \
+`define AMBA_AXI5_LITE_R_PAYLOAD_TYPE(_data_width, _id_width, _user_t) \
   struct packed { \
-    logic [$bits(_bus.RDATA) - 1:0] data; \
+    logic [(_data_width)-1:0] data; \
     axi5_pkg::rresp_e resp; \
-    logic [$bits(_bus.RID) - 1:0] id; \
+    logic [(_id_width)-1:0] id; \
     logic idunq; \
     _user_t user; \
     logic trace; \
   }
+
+`define AMBA_AXI5_LITE_AW_TYPE(_bus,
+                               _user_t) \
+  `AMBA_AXI5_LITE_AW_PAYLOAD_TYPE($bits(_bus.AWADDR), $bits(_bus.AWID), $bits(_bus.AWSUBSYSID), _user_t)
+`define AMBA_AXI5_LITE_W_TYPE(_bus, _user_t) \
+  `AMBA_AXI5_LITE_W_PAYLOAD_TYPE($bits(_bus.WDATA), _user_t)
+`define AMBA_AXI5_LITE_B_TYPE(_bus, _user_t) \
+  `AMBA_AXI5_LITE_B_PAYLOAD_TYPE($bits(_bus.BID), _user_t)
+`define AMBA_AXI5_LITE_AR_TYPE(_bus,
+                               _user_t) \
+  `AMBA_AXI5_LITE_AR_PAYLOAD_TYPE($bits(_bus.ARADDR), $bits(_bus.ARID), $bits(_bus.ARSUBSYSID), _user_t)
+`define AMBA_AXI5_LITE_R_TYPE(_bus, _user_t) \
+  `AMBA_AXI5_LITE_R_PAYLOAD_TYPE($bits(_bus.RDATA), $bits(_bus.RID), _user_t)
 
 // PACKING ORDER
 // Internal signal lists match the packed type declarations above, MSB first.

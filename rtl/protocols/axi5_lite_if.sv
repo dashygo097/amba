@@ -1,4 +1,5 @@
 `include "cc/assertions.svh"
+`include "amba/axi5_lite.svh"
 
 interface axi5_lite_if #(
     parameter  int unsigned DATA_WIDTH     = 32,
@@ -17,8 +18,7 @@ interface axi5_lite_if #(
     parameter  type         req_user_t     = logic,
     parameter  type         data_user_t    = logic,
     parameter  type         resp_user_t    = logic,
-    // verilog_lint: waive typedef-structs-unions
-    localparam type         r_user_t       = struct packed {data_user_t data; resp_user_t resp;},
+    localparam type         r_user_t       = `AMBA_AXI5_LITE_R_USER_TYPE(data_user_t, resp_user_t),
     // AXI5-Lite Tracing Conditions
     parameter  bit          C_EN_TRACE     = 1'b0,
     // AXI5-Lite Unique ID Options

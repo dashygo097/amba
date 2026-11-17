@@ -17,7 +17,11 @@ sources:
   - target: verify
     files:
       - rtl/pkgs/axi5_verify_pkg.sv
+      - rtl/vips/axi5_lite_monitor.sv
       - rtl/vips/axi5_lite_vip.sv
   - target: all(verify, verify_axi5_lite_slv_regs)
     files:
       - tests/tb_axi5_lite_slv_regs.sv
+  - target: all(verify, verify_axi5_lite_vip)
+    files:
+      - tests/tb_axi5_lite_vip.sv
