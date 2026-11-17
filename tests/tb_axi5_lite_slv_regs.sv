@@ -3,6 +3,7 @@
 module tb_axi5_lite_slv_regs #(
     parameter int unsigned RANDOM_TRANSACTIONS = 200,
     parameter bit ENABLE_STRB = 1'b1,
+    parameter bit ENABLE_SIZE = 1'b1,
     parameter bit ENABLE_SIDEBANDS = 1'b1
 ) ();
   timeunit 1ns; timeprecision 1ps;
@@ -59,6 +60,7 @@ module tb_axi5_lite_slv_regs #(
       .ADDR_WIDTH(AddrWidth),
       .DATA_WIDTH(DataWidth),
       .O_EN_STRB(ENABLE_STRB),
+      .O_EN_SIZE(ENABLE_SIZE),
       .OI_EN_PROT(ENABLE_SIDEBANDS),
       .OO_EN_ID(ENABLE_SIDEBANDS),
       .ID_W_WIDTH(ENABLE_SIDEBANDS ? 5 : 0),
@@ -142,12 +144,26 @@ module tb_axi5_lite_slv_regs #(
     return -1;
   endfunction
 
-  function automatic axi5_pkg::bresp_e model_write(input addr_t addr, input write_data_t item);
+  function automatic strb_t access_lanes(input addr_t addr, input axi5_pkg::size_e size);
+    int unsigned first, limit, bytes_per_transfer;
+    strb_t lanes;
+    if (!ENABLE_SIZE) return '1;
+    first = int'(addr % (DataWidth / 8));
+    bytes_per_transfer = 2 ** int'(size);
+    limit = (first / bytes_per_transfer + 1) * bytes_per_transfer;
+    foreach (lanes[i]) lanes[i] = i >= first && i < limit;
+    return lanes;
+  endfunction
+
+  function automatic axi5_pkg::bresp_e model_write(input aw_t request, input write_data_t item);
     int index;
-    index = register_index(addr);
+    strb_t lanes;
+    index = register_index(request.addr);
+    lanes = access_lanes(request.addr, request.size);
     if (index < 0) return axi5_pkg::BRESP_SLVERR;
     for (int unsigned b = 0; b < DataWidth; b++) begin
       if (ENABLE_STRB && !item.strb[b/8]) continue;
+      if (!lanes[b/8]) continue;
       if (RwCfg[index][b]) model_regs[index][b] = item.data[b];
       if (W1cCfg[index][b] && item.data[b]) model_regs[index][b] = 1'b0;
       if (W1sCfg[index][b] && item.data[b]) model_regs[index][b] = 1'b1;
@@ -196,8 +212,8 @@ module tb_axi5_lite_slv_regs #(
         w_cycle = cycle_count;
       end
       if (have_aw && have_w) begin
-        writes.push_expected('{resp: model_write(write_address.addr, write_data),
-                             id: write_address.id, idunq: write_address.idunq, default: '0});
+        writes.push_expected('{resp: model_write(write_address, write_data), id: write_address.id,
+                             idunq: write_address.idunq, default: '0});
         if (aw_cycle < w_cycle) aw_first++;
         else if (w_cycle < aw_cycle) w_first++;
         else together++;
@@ -222,10 +238,11 @@ module tb_axi5_lite_slv_regs #(
 
   task automatic expect_read(input addr_t addr, input data_t expected,
                              input axi5_pkg::rresp_e expected_resp = axi5_pkg::RRESP_OKAY,
-                             input int unsigned r_stall = 0);
+                             input int unsigned r_stall = 0,
+                             input axi5_pkg::size_e size = axi5_pkg::SIZE_4B);
     data_t data;
     axi5_pkg::rresp_e resp;
-    driver.read(.addr(addr), .data(data), .resp(resp), .r_stall(r_stall));
+    driver.read(.addr(addr), .data(data), .resp(resp), .r_stall(r_stall), .size(size));
     df_verify_pkg::check(driver.get_status() == axi5_verify_pkg::LITE_COMPLETED,
                          "Directed read did not complete");
     df_verify_pkg::value_check#(data_t)::equal(data, expected, $sformatf("Read data at %h", addr));
@@ -323,8 +340,64 @@ module tb_axi5_lite_slv_regs #(
     expect_read('h0fc, '0, axi5_pkg::RRESP_SLVERR);
     expect_read('h114, '0, axi5_pkg::RRESP_SLVERR);
 
-    driver.write(.addr('h103), .data('hdeadbeef), .resp(bresp));
-    for (int unsigned lane = 0; lane < 4; lane++) expect_read(addr_t'('h100 + lane), 'hdeadbeef);
+    driver.write(.addr('h103), .data('hdeadbeef), .strb(ENABLE_SIZE ? 4'b1000 : '1), .resp(bresp));
+    for (int unsigned lane = 0; lane < 4; lane++)
+      expect_read(addr_t'('h100 + lane), ENABLE_SIZE ? 'hde223344 : 'hdeadbeef);
+  endtask
+
+  task automatic test_byte_lanes();
+    axi5_pkg::lite_lane_mask_t expected, actual;
+    logic [63:0] addr;
+    int unsigned transfer_bytes, limit;
+    for (int unsigned bus_bytes = 1; bus_bytes <= 128; bus_bytes *= 2) begin
+      for (int unsigned s = 0; s <= $clog2(bus_bytes); s++) begin
+        transfer_bytes = 2 ** s;
+        for (int unsigned offset = 0; offset < bus_bytes; offset++) begin
+          expected = '0;
+          limit = (offset / transfer_bytes + 1) * transfer_bytes;
+          for (int unsigned lane = offset; lane < limit; lane++) expected[lane] = 1'b1;
+          for (int unsigned high_addr = 0; high_addr < 2; high_addr++) begin
+            addr   = (high_addr != 0 ? 64'hffff_ffff_ffff_ff80 : 64'b0) + 64'(offset);
+            actual = axi5_pkg::lite_byte_lanes(addr, axi5_pkg::size_e'(s), bus_bytes * 8);
+            df_verify_pkg::value_check#(axi5_pkg::lite_lane_mask_t)::equal(
+                actual, expected, $sformatf(
+                "Byte lanes: width=%0d addr=%h size=%0d", bus_bytes * 8, addr, s));
+          end
+        end
+      end
+    end
+  endtask
+
+  task automatic test_size_accesses();
+    axi5_pkg::bresp_e bresp;
+    axi5_pkg::size_e size;
+    addr_t addr;
+    strb_t lanes;
+    data_t expected;
+    for (int unsigned s = 0; s <= 2; s++) begin
+      size = axi5_pkg::size_e'(s);
+      for (int unsigned offset = 0; offset < 4; offset++) begin
+        reset_dut();
+        addr = BaseAddr + addr_t'(offset);
+        lanes = access_lanes(addr, size);
+        expected = ResetCfg[0];
+        for (int unsigned lane = 0; lane < 4; lane++) if (lanes[lane]) expected[lane*8+:8] = 8'hff;
+        driver.write(.addr(addr), .size(size), .data('1), .strb(lanes), .resp(bresp),
+                     .aw_delay(offset), .w_delay(3 - offset), .b_stall(4));
+        expect_read(addr, expected, .size(size), .r_stall(4));
+        expect_read(BaseAddr, expected);
+      end
+    end
+    if (!ENABLE_SIZE) return;
+    reset_dut();
+    driver.write(.addr('h105), .size(axi5_pkg::SIZE_1B), .data('h00000f00), .strb(4'b0010),
+                 .resp(bresp));
+    expect_read('h104, 'ha500f05a);
+    driver.write(.addr('h106), .size(axi5_pkg::SIZE_1B), .data('h003c0000), .strb(4'b0100),
+                 .resp(bresp));
+    expect_read('h104, 'ha53cf05a);
+    expect_read('h10a, 'h00ab00ef, .size(axi5_pkg::SIZE_1B), .r_stall(5));
+    expect_read('h108, 'h00ab0000);
   endtask
 
   task automatic test_random_accesses();
@@ -332,6 +405,8 @@ module tb_axi5_lite_slv_regs #(
     axi5_pkg::rresp_e rresp;
     data_t data;
     addr_t addr;
+    axi5_pkg::size_e size;
+    strb_t strb;
     reset_dut();
     repeat (RANDOM_TRANSACTIONS) begin
       addr = BaseAddr + OffsetCfg[$urandom_range(0, NumRegs-1)];
@@ -342,13 +417,15 @@ module tb_axi5_lite_slv_regs #(
         1: addr += addr_t'($urandom_range(1, 3));
         default: ;
       endcase
+      size = axi5_pkg::size_e'($urandom_range(0, 2));
+      strb = strb_t'($urandom) & access_lanes(addr, size);
       if ($urandom_range(0, 1) != 0)
-        driver.write(.addr(addr), .data(data_t'($urandom)), .strb(strb_t'($urandom)),
+        driver.write(.addr(addr), .data(data_t'($urandom)), .strb(strb), .size(size),
                      .aw_delay($urandom_range(0, 5)), .w_delay($urandom_range(0, 5)),
                      .b_stall($urandom_range(0, 8)), .resp(bresp));
       else
-        driver.read(.addr(addr), .ar_delay($urandom_range(0, 5)), .r_stall($urandom_range(0, 8)),
-                    .data(data), .resp(rresp));
+        driver.read(.addr(addr), .size(size), .ar_delay($urandom_range(0, 5)),
+                    .r_stall($urandom_range(0, 8)), .data(data), .resp(rresp));
     end
   endtask
 
@@ -428,10 +505,12 @@ module tb_axi5_lite_slv_regs #(
                          "Initialization must not report a completed transfer");
     df_verify_pkg::check(RANDOM_TRANSACTIONS > 0, "RANDOM_TRANSACTIONS must be positive");
 
+    test_byte_lanes();
     test_reset_values();
     test_write_ordering();
     test_register_fields();
     test_address_decode();
+    test_size_accesses();
     test_sidebands();
     reset_pending(RESET_AFTER_AW);
     reset_pending(RESET_AFTER_W);

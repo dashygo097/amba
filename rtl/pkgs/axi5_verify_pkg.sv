@@ -8,14 +8,6 @@ package axi5_verify_pkg;
     LITE_RESET
   } lite_status_e;
 
-  function automatic bit lite_widths_valid(
-      input int unsigned addr_width,
-      input int unsigned data_width
-  );
-    return addr_width >= 1 && addr_width <= 64 && data_width >= 8 &&
-           data_width <= 1024 && (data_width & (data_width - 1)) == 0;
-  endfunction
-
   virtual class lite_types #(
       parameter  int unsigned ADDR_WIDTH     = 32,
       parameter  int unsigned DATA_WIDTH     = 32,
@@ -48,25 +40,19 @@ package axi5_verify_pkg;
     typedef logic [SubsysIdWidth - 1:0] subsys_id_t;
 
     static function strb_t byte_lanes(input addr_t addr, input axi5_pkg::size_e size);
-      int unsigned first_lane, limit_lane, bytes_per_transfer;
-      strb_t mask;
-      mask = '0;
-      bytes_per_transfer = 1 << int'(size);
-      first_lane = int'(64'(addr) % 64'(DATA_WIDTH / 8));
-      limit_lane = (first_lane / bytes_per_transfer + 1) * bytes_per_transfer;
-      for (int unsigned lane = 0; lane < DATA_WIDTH / 8; lane++)
-        mask[lane] = lane >= first_lane && lane < limit_lane;
-      return mask;
+      return strb_t'(axi5_pkg::lite_byte_lanes(64'(addr), size, DATA_WIDTH));
     endfunction
   endclass
 
-  class channel_coverage #(type payload_t);
+  class channel_coverage #(
+      type payload_t
+  );
     payload_t ones_seen = '0;
     payload_t zeros_seen = '0;
     longint unsigned transfers = 0;
     longint unsigned stalls = 0;
 
-    function void sample(input logic valid, input logic ready, input payload_t payload);
+    function void sample (input logic valid, input logic ready, input payload_t payload);
       if (valid && !ready) stalls++;
       if (valid && ready) begin
         transfers++;

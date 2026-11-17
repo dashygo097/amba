@@ -62,18 +62,18 @@
     logic trace; \
   }
 
-`define AMBA_AXI5_LITE_AW_TYPE(_bus,
-                               _user_t) \
+// verilog_format: off
+`define AMBA_AXI5_LITE_AW_TYPE(_bus, _user_t) \
   `AMBA_AXI5_LITE_AW_PAYLOAD_TYPE($bits(_bus.AWADDR), $bits(_bus.AWID), $bits(_bus.AWSUBSYSID), _user_t)
 `define AMBA_AXI5_LITE_W_TYPE(_bus, _user_t) \
   `AMBA_AXI5_LITE_W_PAYLOAD_TYPE($bits(_bus.WDATA), _user_t)
 `define AMBA_AXI5_LITE_B_TYPE(_bus, _user_t) \
   `AMBA_AXI5_LITE_B_PAYLOAD_TYPE($bits(_bus.BID), _user_t)
-`define AMBA_AXI5_LITE_AR_TYPE(_bus,
-                               _user_t) \
+`define AMBA_AXI5_LITE_AR_TYPE(_bus, _user_t) \
   `AMBA_AXI5_LITE_AR_PAYLOAD_TYPE($bits(_bus.ARADDR), $bits(_bus.ARID), $bits(_bus.ARSUBSYSID), _user_t)
 `define AMBA_AXI5_LITE_R_TYPE(_bus, _user_t) \
   `AMBA_AXI5_LITE_R_PAYLOAD_TYPE($bits(_bus.RDATA), $bits(_bus.RID), _user_t)
+// verilog_format: on
 
 // PACKING ORDER
 // Internal signal lists match the packed type declarations above, MSB first.

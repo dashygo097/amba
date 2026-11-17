@@ -238,7 +238,7 @@ module axi5_lite_vip #(
   endfunction
 
   initial begin
-    df_verify_pkg::check(axi5_verify_pkg::lite_widths_valid(ADDR_WIDTH, DATA_WIDTH),
+    df_verify_pkg::check(axi5_pkg::lite_widths_valid(ADDR_WIDTH, DATA_WIDTH),
                          "Unsupported AXI-Lite address/data storage widths");
     df_verify_pkg::check(ADDR_WIDTH == $bits(axi.AWADDR) && ADDR_WIDTH == $bits(axi.ARADDR
                          ) && DATA_WIDTH == $bits(axi.WDATA) && DATA_WIDTH == $bits(axi.RDATA

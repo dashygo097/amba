@@ -67,4 +67,25 @@ package axi5_pkg;
   // REGION
   typedef logic [3:0] region_t;
 
+  // helpers
+  localparam int unsigned LiteMaxDataWidth = 1024;
+  typedef logic [LiteMaxDataWidth / 8 - 1:0] lite_lane_mask_t;
+
+  function automatic bit lite_widths_valid(input int unsigned addr_width,
+                                           input int unsigned data_width);
+    return addr_width >= 1 && addr_width <= 64 && data_width >= 8 &&
+           data_width <= LiteMaxDataWidth && (data_width & (data_width - 1)) == 0;
+  endfunction
+
+  function automatic lite_lane_mask_t lite_byte_lanes(input logic [63:0] addr, input size_e size,
+                                                      input int unsigned data_width);
+    int unsigned first_lane, limit_lane;
+    lite_lane_mask_t mask;
+    first_lane = int'(addr) & (data_width / 8 - 1);
+    limit_lane = ((first_lane >> size) + 1) << size;
+    for (int unsigned lane = 0; lane < LiteMaxDataWidth / 8; lane++)
+    mask[lane] = (lane < data_width / 8) && (lane >= first_lane) && (lane < limit_lane);
+    return mask;
+  endfunction
+
 endpackage

@@ -37,6 +37,7 @@ module axi5_lite_slv_regs #(
 );
 
   localparam int unsigned StrbWidth = DATA_WIDTH / 8;
+  localparam axi5_pkg::size_e FullSize = axi5_pkg::size_e'($clog2(StrbWidth));
   localparam int unsigned WriteIdWidth = $bits(axi.AWID);
   localparam int unsigned ReadIdWidth = $bits(axi.ARID);
   localparam int unsigned IdWidth = WriteIdWidth > ReadIdWidth ? WriteIdWidth : ReadIdWidth;
@@ -56,6 +57,9 @@ module axi5_lite_slv_regs #(
 
   logic [IdWidth - 1:0] id_d, id_r;
   logic idunq_d, idunq_r, write_r;
+  logic size_error_d, size_error_r;
+  logic  response_error;
+  strb_t write_lanes;
 
   logic aw_pending_d, aw_pending_r, aw_fire;
   logic w_pending_d, w_pending_r, w_fire;
@@ -74,7 +78,7 @@ module axi5_lite_slv_regs #(
   always_comb begin
     aw_in = '{
         addr: axi.AWADDR,
-        size: axi5_pkg::size_e'(0),
+        size: axi.O_EN_SIZE ? axi.AWSIZE : FullSize,
         id: axi.ID_W_WIDTH > 0 ? WriteIdWidth'(axi.AWID) : '0,
         idunq: axi.OO_EN_IDUNQ && axi.AWIDUNQ,
         default: '0
@@ -104,7 +108,7 @@ module axi5_lite_slv_regs #(
   always_comb begin
     ar_in = '{
         addr: axi.ARADDR,
-        size: axi5_pkg::size_e'(0),
+        size: axi.O_EN_SIZE ? axi.ARSIZE : FullSize,
         id: axi.ID_R_WIDTH > 0 ? ReadIdWidth'(axi.ARID) : '0,
         idunq: axi.OO_EN_IDUNQ && axi.ARIDUNQ,
         default: '0
@@ -128,11 +132,15 @@ module axi5_lite_slv_regs #(
     write_fire = bank_fire && select_write;
     read_fire = bank_fire && !select_write;
 
+    write_lanes = axi.O_EN_SIZE ?
+        strb_t'(axi5_pkg::lite_byte_lanes(64'(aw.addr), aw.size, DATA_WIDTH)) : '1;
+    size_error_d = axi.O_EN_SIZE && (select_write ? aw.size : ar.size) > FullSize;
+
     bank_req.payload = '{
         addr: (select_write ? aw.addr : ar.addr) & ~addr_t'(StrbWidth - 1),
-        write: select_write,
+        write: select_write || size_error_d,
         data: select_write ? w.data : '0,
-        strb: select_write ? w.strb : '0
+        strb: select_write && !size_error_d ? w.strb & write_lanes : '0
     };
 
     id_d = select_write ? IdWidth'(aw.id) : IdWidth'(ar.id);
@@ -143,6 +151,7 @@ module axi5_lite_slv_regs #(
   `REG_CE(write_r, select_write, bank_fire, axi.ACLK)
   `REG_CE(id_r, id_d, bank_fire, axi.ACLK)
   `REG_CE(idunq_r, idunq_d, bank_fire, axi.ACLK)
+  `REG_CE(size_error_r, size_error_d, bank_fire, axi.ACLK)
 
   // REGISTER BANK
   register_bank #(
@@ -166,15 +175,16 @@ module axi5_lite_slv_regs #(
 
   // RESPONSE
   always_comb begin
+    response_error = bank_resp.payload.error || size_error_r;
     b_in = '{
-        resp: bank_resp.payload.error ? axi5_pkg::BRESP_SLVERR : axi5_pkg::BRESP_OKAY,
+        resp: response_error ? axi5_pkg::BRESP_SLVERR : axi5_pkg::BRESP_OKAY,
         id: id_r[$bits(axi.BID)-1:0],
         idunq: idunq_r,
         default: '0
     };
     r_in = '{
         data: bank_resp.payload.data,
-        resp: bank_resp.payload.error ? axi5_pkg::RRESP_SLVERR : axi5_pkg::RRESP_OKAY,
+        resp: response_error ? axi5_pkg::RRESP_SLVERR : axi5_pkg::RRESP_OKAY,
         id: id_r[$bits(axi.RID)-1:0],
         idunq: idunq_r,
         default: '0
@@ -228,12 +238,13 @@ module axi5_lite_slv_regs #(
   `ASSERT_INIT(StrobeWidthMatch, DATA_WIDTH/ 8 == $bits(axi.WSTRB))
   `ASSERT_INIT(WriteIdWidthMatch, $bits(axi.AWID) == $bits(axi.BID))
   `ASSERT_INIT(ReadIdWidthMatch, $bits(axi.ARID) == $bits(axi.RID))
-  `ASSERT_INIT(SizeDisabled, !axi.O_EN_SIZE)
+  `ASSERT_INIT(WidthsValid, axi5_pkg::lite_widths_valid(ADDR_WIDTH, DATA_WIDTH))
   `ASSERT_INIT(TraceDisabled, !axi.C_EN_TRACE)
 
   `ASSERT(BankAccepted, bank_req.valid |-> bank_req.ready, axi.ACLK, axi.ARESETn)
-  `ASSERT(OwnerStable, bank_resp.valid && !bank_resp.ready |=> $stable({write_r, id_r, idunq_r}),
-          axi.ACLK, axi.ARESETn)
+  `ASSERT(OwnerStable, bank_resp.valid && !bank_resp.ready |=> $stable({write_r, id_r, idunq_r,
+                                                                        size_error_r}), axi.ACLK,
+          axi.ARESETn)
   `ASSERT(BStable, axi.BVALID && !axi.BREADY |=> axi.BVALID && $stable(b_out), axi.ACLK,
           axi.ARESETn)
   `ASSERT(RStable, axi.RVALID && !axi.RREADY |=> axi.RVALID && $stable(r_out), axi.ACLK,
