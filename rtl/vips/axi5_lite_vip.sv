@@ -1,44 +1,30 @@
 `include "amba/axi5_lite.svh"
 
 module axi5_lite_vip #(
-    parameter  int unsigned ADDR_WIDTH     = 32,
-    parameter  int unsigned DATA_WIDTH     = 32,
-    parameter  int unsigned TIMEOUT_CYCLES = 256,
-    parameter  type         req_user_t     = logic,
-    parameter  type         data_user_t    = logic,
-    parameter  type         resp_user_t    = logic,
-    localparam type         r_user_t       = `AMBA_AXI5_LITE_R_USER_TYPE(data_user_t, resp_user_t)
+    parameter int unsigned TIMEOUT_CYCLES = 256
 ) (
     axi5_lite_if axi
 );
-  typedef axi5_verify_pkg::lite_types#(
-      .ADDR_WIDTH($bits(axi.AWADDR)),
-      .DATA_WIDTH($bits(axi.WDATA))
-  ) types_t;
-  typedef types_t::addr_t addr_t;
-  typedef types_t::data_t data_t;
-  typedef types_t::strb_t strb_t;
+  typedef logic [$bits(axi.AWADDR)-1:0] addr_t;
+  typedef logic [$bits(axi.WDATA)-1:0] data_t;
+  typedef logic [$bits(axi.WSTRB)-1:0] strb_t;
+  typedef logic [$bits(axi.AWUSER)-1:0] req_user_t;
+  typedef logic [$bits(axi.WUSER)-1:0] data_user_t;
 
   bit initialized = 1'b0;
   axi5_verify_pkg::lite_status_e transfer_status = axi5_verify_pkg::LITE_NOT_STARTED;
   typedef logic [$bits(axi.AWID)-1:0] aw_id_t;
   typedef logic [$bits(axi.ARID)-1:0] ar_id_t;
   typedef logic [$bits(axi.AWSUBSYSID)-1:0] subsys_id_t;
-  typedef `AMBA_AXI5_LITE_B_TYPE(axi, resp_user_t) b_t;
-  typedef `AMBA_AXI5_LITE_R_TYPE(axi, r_user_t) r_t;
-  localparam axi5_pkg::size_e FullSize = axi5_pkg::size_e'($clog2(DATA_WIDTH / 8));
+  typedef `AMBA_AXI5_LITE_B_TYPE(axi) b_t;
+  typedef `AMBA_AXI5_LITE_R_TYPE(axi) r_t;
+  localparam axi5_pkg::size_e FullSize = axi5_pkg::size_e'($clog2($bits(axi.WSTRB)));
   b_t b_sample, b_response;
   r_t r_sample, r_response;
   bit b_response_valid = 1'b0;
   bit r_response_valid = 1'b0;
 
-  axi5_lite_monitor #(
-      .req_user_t (req_user_t),
-      .data_user_t(data_user_t),
-      .resp_user_t(resp_user_t)
-  ) monitor (
-      .axi(axi)
-  );
+  axi5_lite_monitor monitor (.axi(axi));
 
   always_comb begin
     `AMBA_AXI5_LITE_PACK_B(b_sample, axi)
@@ -147,13 +133,13 @@ module axi5_lite_vip #(
       axi.AWADDR = addr;
       axi.AWPROT = axi.OI_EN_PROT ? prot : '0;
       axi.AWSIZE = axi.O_EN_SIZE ? size : FullSize;
-      axi.AWID = axi.ID_W_WIDTH > 0 ? id : '0;
+      axi.AWID = axi.OO_EN_ID ? id : '0;
       axi.AWIDUNQ = axi.OO_EN_IDUNQ && idunq;
       axi.AWUSER = axi.O_EN_USER ? aw_user : req_user_t'('0);
       axi.WUSER = axi.O_EN_USER ? w_user : data_user_t'('0);
       axi.AWTRACE = axi.C_EN_TRACE && aw_trace;
       axi.WTRACE = axi.C_EN_TRACE && w_trace;
-      axi.AWSUBSYSID = axi.SUBSYSID_WIDTH > 0 ? subsys_id : '0;
+      axi.AWSUBSYSID = axi.O_EN_SUBSYSTEM ? subsys_id : '0;
       axi.WDATA = data;
       axi.WSTRB = axi.O_EN_STRB ? strb : '1;
       axi.AWVALID = !aw_done && cycle >= aw_delay;
@@ -204,11 +190,11 @@ module axi5_lite_vip #(
       axi.ARADDR = addr;
       axi.ARPROT = axi.OI_EN_PROT ? prot : '0;
       axi.ARSIZE = axi.O_EN_SIZE ? size : FullSize;
-      axi.ARID = axi.ID_R_WIDTH > 0 ? id : '0;
+      axi.ARID = axi.OO_EN_ID ? id : '0;
       axi.ARIDUNQ = axi.OO_EN_IDUNQ && idunq;
       axi.ARUSER = axi.O_EN_USER ? ar_user : req_user_t'('0);
       axi.ARTRACE = axi.C_EN_TRACE && ar_trace;
-      axi.ARSUBSYSID = axi.SUBSYSID_WIDTH > 0 ? subsys_id : '0;
+      axi.ARSUBSYSID = axi.O_EN_SUBSYSTEM ? subsys_id : '0;
       axi.ARVALID = !ar_done && cycle >= ar_delay;
       axi.RREADY = stalled_cycles >= r_stall;
       @(posedge axi.ACLK or negedge axi.ARESETn);
@@ -238,12 +224,6 @@ module axi5_lite_vip #(
   endfunction
 
   initial begin
-    df_verify_pkg::check(axi5_pkg::lite_widths_valid(ADDR_WIDTH, DATA_WIDTH),
-                         "Unsupported AXI-Lite address/data storage widths");
-    df_verify_pkg::check(ADDR_WIDTH == $bits(axi.AWADDR) && ADDR_WIDTH == $bits(axi.ARADDR
-                         ) && DATA_WIDTH == $bits(axi.WDATA) && DATA_WIDTH == $bits(axi.RDATA
-                         ) && DATA_WIDTH / 8 == $bits(axi.WSTRB),
-                         "AXI-Lite driver/interface width mismatch");
     df_verify_pkg::check(TIMEOUT_CYCLES > 0, "AXI-Lite TIMEOUT_CYCLES must be positive");
   end
 endmodule

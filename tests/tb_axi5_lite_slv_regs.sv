@@ -11,26 +11,48 @@ module tb_axi5_lite_slv_regs #(
   localparam int unsigned AddrWidth = 32;
   localparam int unsigned DataWidth = 32;
   localparam int unsigned NumRegs   = 5;
-  typedef axi5_verify_pkg::lite_types#(
+  typedef logic [6:0] req_user_t;
+  typedef logic [8:0] data_user_t;
+  typedef logic [3:0] resp_user_t;
+
+  logic clk_i = 1'b0;
+  logic rst_n_i;
+  axi5_lite_if #(
       .ADDR_WIDTH    (AddrWidth),
       .DATA_WIDTH    (DataWidth),
-      .ID_W_WIDTH    (ENABLE_SIDEBANDS ? 5 : 0),
-      .ID_R_WIDTH    (ENABLE_SIDEBANDS ? 3 : 0),
-      .SUBSYSID_WIDTH(ENABLE_SIDEBANDS ? 4 : 0),
-      .req_user_t    (logic [6:0]),
-      .data_user_t   (logic [8:0]),
-      .resp_user_t   (logic [3:0])
+      .O_EN_STRB     (ENABLE_STRB),
+      .O_EN_SIZE     (ENABLE_SIZE),
+      .OI_EN_PROT    (ENABLE_SIDEBANDS),
+      .OO_EN_ID      (ENABLE_SIDEBANDS),
+      .ID_W_WIDTH    (5),
+      .ID_R_WIDTH    (3),
+      .OO_EN_IDUNQ   (ENABLE_SIDEBANDS),
+      .O_EN_USER     (ENABLE_SIDEBANDS),
+      .O_EN_WAKEUP   (ENABLE_SIDEBANDS),
+      .O_EN_SUBSYSTEM(ENABLE_SIDEBANDS),
+      .SUBSYSID_WIDTH(4),
+      .req_user_t    (req_user_t),
+      .data_user_t   (data_user_t),
+      .resp_user_t   (resp_user_t)
+  ) axi (
+      .ACLK   (clk_i),
+      .ARESETn(rst_n_i)
+  );
+
+  typedef axi5_verify_pkg::lite_types#(
+      .ADDR_WIDTH    ($bits(axi.AWADDR)),
+      .DATA_WIDTH    ($bits(axi.WDATA)),
+      .ID_W_WIDTH    ($bits(axi.AWID)),
+      .ID_R_WIDTH    ($bits(axi.ARID)),
+      .SUBSYSID_WIDTH($bits(axi.AWSUBSYSID)),
+      .req_user_t    (req_user_t),
+      .data_user_t   (data_user_t),
+      .resp_user_t   (resp_user_t)
   ) types_t;
   typedef types_t::addr_t addr_t;
   typedef types_t::data_t data_t;
   typedef types_t::strb_t strb_t;
-  typedef logic [6:0] req_user_t;
-  typedef logic [8:0] data_user_t;
-  typedef logic [3:0] resp_user_t;
-  typedef struct packed {
-    data_user_t data;
-    resp_user_t resp;
-  } r_user_t;
+  typedef types_t::r_user_t r_user_t;
 
   typedef enum {
     RESET_AFTER_AW,
@@ -54,52 +76,17 @@ module tb_axi5_lite_slv_regs #(
   localparam data_t [NumRegs-1:0] W1sCfg = '{1: 'h00ff0000, default: '0};
   localparam data_t [NumRegs-1:0] RcCfg = '{2: 'hff, default: '0};
 
-  logic clk_i = 1'b0;
-  logic rst_n_i;
-  axi5_lite_if #(
-      .ADDR_WIDTH    (AddrWidth),
-      .DATA_WIDTH    (DataWidth),
-      .O_EN_STRB     (ENABLE_STRB),
-      .O_EN_SIZE     (ENABLE_SIZE),
-      .OI_EN_PROT    (ENABLE_SIDEBANDS),
-      .OO_EN_ID      (ENABLE_SIDEBANDS),
-      .ID_W_WIDTH    (ENABLE_SIDEBANDS ? 5 : 0),
-      .ID_R_WIDTH    (ENABLE_SIDEBANDS ? 3 : 0),
-      .OO_EN_IDUNQ   (ENABLE_SIDEBANDS),
-      .O_EN_USER     (ENABLE_SIDEBANDS),
-      .O_EN_WAKEUP   (ENABLE_SIDEBANDS),
-      .SUBSYSID_WIDTH(ENABLE_SIDEBANDS ? 4 : 0),
-      .req_user_t    (req_user_t),
-      .data_user_t   (data_user_t),
-      .resp_user_t   (resp_user_t)
-  ) axi (
-      .ACLK(clk_i),
-      .ARESETn(rst_n_i)
-  );
-  axi5_lite_vip #(
-      .ADDR_WIDTH (AddrWidth),
-      .DATA_WIDTH (DataWidth),
-      .req_user_t (req_user_t),
-      .data_user_t(data_user_t),
-      .resp_user_t(resp_user_t)
-  ) driver (
-      .axi(axi)
-  );
+  axi5_lite_vip driver (.axi(axi));
   axi5_lite_slv_regs #(
-      .ADDR_WIDTH (AddrWidth),
-      .DATA_WIDTH (DataWidth),
-      .req_user_t (req_user_t),
-      .data_user_t(data_user_t),
-      .resp_user_t(resp_user_t),
-      .NUM_REGS   (NumRegs),
-      .BASE_ADDR  (BaseAddr),
-      .OFFSET_CFG (OffsetCfg),
-      .RESET_CFG  (ResetCfg),
-      .READ_CFG   (ReadCfg),
-      .RW_CFG     (RwCfg),
-      .W1C_CFG    (W1cCfg),
-      .W1S_CFG    (W1sCfg),
-      .RC_CFG     (RcCfg)
+      .NUM_REGS  (NumRegs),
+      .BASE_ADDR (BaseAddr),
+      .OFFSET_CFG(OffsetCfg),
+      .RESET_CFG (ResetCfg),
+      .READ_CFG  (ReadCfg),
+      .RW_CFG    (RwCfg),
+      .W1C_CFG   (W1cCfg),
+      .W1S_CFG   (W1sCfg),
+      .RC_CFG    (RcCfg)
   ) dut (
       .axi(axi)
   );
@@ -137,7 +124,7 @@ module tb_axi5_lite_slv_regs #(
 
   function automatic int register_index(input addr_t addr);
     addr_t aligned;
-    aligned = addr - addr % addr_t'(DataWidth / 8);
+    aligned = addr - addr % addr_t'($bits(axi.WSTRB));
     foreach (model_regs[i]) begin
       if (aligned == BaseAddr + OffsetCfg[i]) return i;
     end
@@ -147,8 +134,8 @@ module tb_axi5_lite_slv_regs #(
   function automatic strb_t access_lanes(input addr_t addr, input axi5_pkg::size_e size);
     int unsigned first, limit, bytes_per_transfer;
     strb_t lanes;
-    if (!ENABLE_SIZE) return '1;
-    first = int'(addr % (DataWidth / 8));
+    if (!axi.O_EN_SIZE) return '1;
+    first = int'(addr % $bits(axi.WSTRB));
     bytes_per_transfer = 2 ** int'(size);
     limit = (first / bytes_per_transfer + 1) * bytes_per_transfer;
     foreach (lanes[i]) lanes[i] = i >= first && i < limit;
@@ -161,8 +148,8 @@ module tb_axi5_lite_slv_regs #(
     index = register_index(request.addr);
     lanes = access_lanes(request.addr, request.size);
     if (index < 0) return axi5_pkg::BRESP_SLVERR;
-    for (int unsigned b = 0; b < DataWidth; b++) begin
-      if (ENABLE_STRB && !item.strb[b/8]) continue;
+    for (int unsigned b = 0; b < $bits(axi.WDATA); b++) begin
+      if (axi.O_EN_STRB && !item.strb[b/8]) continue;
       if (!lanes[b/8]) continue;
       if (RwCfg[index][b]) model_regs[index][b] = item.data[b];
       if (W1cCfg[index][b] && item.data[b]) model_regs[index][b] = 1'b0;
@@ -178,7 +165,7 @@ module tb_axi5_lite_slv_regs #(
     result = '{resp: axi5_pkg::RRESP_SLVERR, id: request.id, idunq: request.idunq, default: '0};
     if (index < 0) return result;
     result.resp = axi5_pkg::RRESP_OKAY;
-    for (int unsigned b = 0; b < DataWidth; b++) begin
+    for (int unsigned b = 0; b < $bits(axi.RDATA); b++) begin
       if (ReadCfg[index][b]) result.data[b] = model_regs[index][b];
       if (RcCfg[index][b]) model_regs[index][b] = 1'b0;
     end

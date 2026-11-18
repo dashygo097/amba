@@ -67,9 +67,6 @@ package axi5_pkg;
   // REGION
   typedef logic [3:0] region_t;
 
-  // SUBSYSTEM
-  typedef logic [7:0] max_subsystem_id_t;
-
   // helpers
   localparam int unsigned LiteMaxDataWidth = 1024;
   typedef logic [LiteMaxDataWidth / 8 - 1:0] lite_lane_mask_t;

@@ -12,9 +12,8 @@ interface axi5_lite_if #(
     parameter  bit          OI_EN_PROT     = 1'b0,
     // AXI5-Lite ID Options
     parameter  bit          OO_EN_ID       = 1'b0,
-    parameter  int unsigned ID_WIDTH       = 1,
-    parameter  int unsigned ID_W_WIDTH     = OO_EN_ID ? ID_WIDTH : 1,
-    parameter  int unsigned ID_R_WIDTH     = OO_EN_ID ? ID_WIDTH : 1,
+    parameter  int unsigned ID_W_WIDTH     = 1,
+    parameter  int unsigned ID_R_WIDTH     = 1,
     // AXI5-Lite User Options
     parameter  bit          O_EN_USER      = 1'b0,
     parameter  type         req_user_t     = logic,
@@ -140,11 +139,9 @@ interface axi5_lite_if #(
   );
 
   // CHECKS
-  `ASSERT_INIT(DataWidthValid,
-               DATA_WIDTH >= 8 && DATA_WIDTH <= 1024 && (DATA_WIDTH & (DATA_WIDTH - 1)) == 0)
-  `ASSERT_INIT(AddressWidthValid, ADDR_WIDTH >= 1 && ADDR_WIDTH <= 64)
-  `ASSERT_INIT(WriteIdWidthValid, ID_W_WIDTH <= 32)
-  `ASSERT_INIT(ReadIdWidthValid, ID_R_WIDTH <= 32)
-  `ASSERT_INIT(SubsysIdWidthValid, SUBSYSID_WIDTH <= 8)
+  `ASSERT_INIT(WidthsValid, axi5_pkg::lite_widths_valid(ADDR_WIDTH, DATA_WIDTH))
+  `ASSERT_INIT(WriteIdWidthValid, ID_W_WIDTH <= 32 && (!OO_EN_ID || ID_W_WIDTH > 0))
+  `ASSERT_INIT(ReadIdWidthValid, ID_R_WIDTH <= 32 && (!OO_EN_ID || ID_R_WIDTH > 0))
+  `ASSERT_INIT(SubsysIdWidthValid, SUBSYSID_WIDTH <= 8 && (!O_EN_SUBSYSTEM || SUBSYSID_WIDTH > 0))
 
 endinterface

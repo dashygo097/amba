@@ -1,18 +1,7 @@
 `ifndef AMBA_AXI5_LITE_SVH_
 `define AMBA_AXI5_LITE_SVH_
 
-// Public packed type expressions for axi5_lite_if channel payloads.
-// Use with typedef in the module connected to _bus. USER types must match that
-// interface instance. Optional fields retain their storage widths.
-// Field order is part of the packing ABI; VALID, READY and AWAKEUP are
-// separate from the payload.
-// Example inside a module with an axi5_lite_if.sink port named axi and a
-// req_user_t type parameter shared with the interface configuration:
-//   typedef `AMBA_AXI5_LITE_AW_TYPE(axi, req_user_t) lite_aw_t;
-//   lite_aw_t aw_in;
-//   always_comb begin
-//     `AMBA_AXI5_LITE_PACK_AW(aw_in, axi)
-//   end
+// Packed channel payloads; VALID, READY and AWAKEUP are separate.
 
 `define AMBA_AXI5_LITE_AW_PAYLOAD_TYPE(_addr_width, _id_width, _subsys_width, _user_t) \
   struct packed { \
@@ -62,17 +51,18 @@
     logic trace; \
   }
 
+// Interface views use packed bits for opaque USER fields.
 // verilog_format: off
-`define AMBA_AXI5_LITE_AW_TYPE(_bus, _user_t) \
-  `AMBA_AXI5_LITE_AW_PAYLOAD_TYPE($bits(_bus.AWADDR), $bits(_bus.AWID), $bits(_bus.AWSUBSYSID), _user_t)
-`define AMBA_AXI5_LITE_W_TYPE(_bus, _user_t) \
-  `AMBA_AXI5_LITE_W_PAYLOAD_TYPE($bits(_bus.WDATA), _user_t)
-`define AMBA_AXI5_LITE_B_TYPE(_bus, _user_t) \
-  `AMBA_AXI5_LITE_B_PAYLOAD_TYPE($bits(_bus.BID), _user_t)
-`define AMBA_AXI5_LITE_AR_TYPE(_bus, _user_t) \
-  `AMBA_AXI5_LITE_AR_PAYLOAD_TYPE($bits(_bus.ARADDR), $bits(_bus.ARID), $bits(_bus.ARSUBSYSID), _user_t)
-`define AMBA_AXI5_LITE_R_TYPE(_bus, _user_t) \
-  `AMBA_AXI5_LITE_R_PAYLOAD_TYPE($bits(_bus.RDATA), $bits(_bus.RID), _user_t)
+`define AMBA_AXI5_LITE_AW_TYPE(_bus) \
+  `AMBA_AXI5_LITE_AW_PAYLOAD_TYPE($bits(_bus.AWADDR), $bits(_bus.AWID), $bits(_bus.AWSUBSYSID), logic [$bits(_bus.AWUSER)-1:0])
+`define AMBA_AXI5_LITE_W_TYPE(_bus) \
+  `AMBA_AXI5_LITE_W_PAYLOAD_TYPE($bits(_bus.WDATA), logic [$bits(_bus.WUSER)-1:0])
+`define AMBA_AXI5_LITE_B_TYPE(_bus) \
+  `AMBA_AXI5_LITE_B_PAYLOAD_TYPE($bits(_bus.BID), logic [$bits(_bus.BUSER)-1:0])
+`define AMBA_AXI5_LITE_AR_TYPE(_bus) \
+  `AMBA_AXI5_LITE_AR_PAYLOAD_TYPE($bits(_bus.ARADDR), $bits(_bus.ARID), $bits(_bus.ARSUBSYSID), logic [$bits(_bus.ARUSER)-1:0])
+`define AMBA_AXI5_LITE_R_TYPE(_bus) \
+  `AMBA_AXI5_LITE_R_PAYLOAD_TYPE($bits(_bus.RDATA), $bits(_bus.RID), logic [$bits(_bus.RUSER)-1:0])
 // verilog_format: on
 
 // PACKING ORDER

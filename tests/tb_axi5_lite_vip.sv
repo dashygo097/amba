@@ -6,10 +6,6 @@ module tb_axi5_lite_vip #(
 ) ();
   timeunit 1ns; timeprecision 1ps;
   localparam int unsigned AddrWidth = 40;
-  localparam int unsigned WriteIdWidth = ENABLE_OPTIONS ? 5 : 0;
-  localparam int unsigned ReadIdWidth = ENABLE_OPTIONS ? 3 : 0;
-  localparam int unsigned SubsysIdWidth = ENABLE_OPTIONS ? 4 : 0;
-  localparam int unsigned SizeBits = $clog2(DATA_WIDTH / 8);
   typedef struct packed {
     logic [2:0] domain;
     logic [4:0] tag;
@@ -22,12 +18,36 @@ module tb_axi5_lite_vip #(
     logic [1:0] flags;
     logic [3:0] tag;
   } resp_user_t;
-  typedef axi5_verify_pkg::lite_types#(
+  logic  clk = 1'b0;
+  logic  rst_n;
+  string fault;
+  axi5_lite_if #(
       .ADDR_WIDTH    (AddrWidth),
       .DATA_WIDTH    (DATA_WIDTH),
-      .ID_W_WIDTH    (WriteIdWidth),
-      .ID_R_WIDTH    (ReadIdWidth),
-      .SUBSYSID_WIDTH(SubsysIdWidth),
+      .OI_EN_PROT    (ENABLE_OPTIONS),
+      .O_EN_SIZE     (ENABLE_OPTIONS),
+      .OO_EN_ID      (ENABLE_OPTIONS),
+      .ID_W_WIDTH    (5),
+      .ID_R_WIDTH    (3),
+      .O_EN_USER     (ENABLE_OPTIONS),
+      .OO_EN_IDUNQ   (ENABLE_OPTIONS),
+      .C_EN_TRACE    (ENABLE_OPTIONS),
+      .O_EN_WAKEUP   (ENABLE_OPTIONS),
+      .O_EN_SUBSYSTEM(ENABLE_OPTIONS),
+      .SUBSYSID_WIDTH(4),
+      .req_user_t    (req_user_t),
+      .data_user_t   (data_user_t),
+      .resp_user_t   (resp_user_t)
+  ) axi (
+      .ACLK   (clk),
+      .ARESETn(rst_n)
+  );
+  typedef axi5_verify_pkg::lite_types#(
+      .ADDR_WIDTH    ($bits(axi.AWADDR)),
+      .DATA_WIDTH    ($bits(axi.WDATA)),
+      .ID_W_WIDTH    ($bits(axi.AWID)),
+      .ID_R_WIDTH    ($bits(axi.ARID)),
+      .SUBSYSID_WIDTH($bits(axi.AWSUBSYSID)),
       .req_user_t    (req_user_t),
       .data_user_t   (data_user_t),
       .resp_user_t   (resp_user_t)
@@ -41,39 +61,9 @@ module tb_axi5_lite_vip #(
   typedef types_t::ar_t ar_t;
   typedef types_t::r_t r_t;
   typedef types_t::r_user_t r_user_t;
+  localparam int unsigned SizeBits = $clog2($bits(axi.WSTRB));
 
-  logic  clk = 1'b0;
-  logic  rst_n;
-  string fault;
-  axi5_lite_if #(
-      .ADDR_WIDTH(AddrWidth),
-      .DATA_WIDTH(DATA_WIDTH),
-      .OI_EN_PROT(ENABLE_OPTIONS),
-      .O_EN_SIZE(ENABLE_OPTIONS),
-      .OO_EN_ID(ENABLE_OPTIONS),
-      .ID_W_WIDTH(WriteIdWidth),
-      .ID_R_WIDTH(ReadIdWidth),
-      .O_EN_USER(ENABLE_OPTIONS),
-      .OO_EN_IDUNQ(ENABLE_OPTIONS),
-      .C_EN_TRACE(ENABLE_OPTIONS),
-      .O_EN_WAKEUP(ENABLE_OPTIONS),
-      .SUBSYSID_WIDTH(SubsysIdWidth),
-      .req_user_t(req_user_t),
-      .data_user_t(data_user_t),
-      .resp_user_t(resp_user_t)
-  ) axi (
-      .ACLK(clk),
-      .ARESETn(rst_n)
-  );
-  axi5_lite_vip #(
-      .ADDR_WIDTH (AddrWidth),
-      .DATA_WIDTH (DATA_WIDTH),
-      .req_user_t (req_user_t),
-      .data_user_t(data_user_t),
-      .resp_user_t(resp_user_t)
-  ) driver (
-      .axi(axi)
-  );
+  axi5_lite_vip driver (.axi(axi));
 
   aw_t aw_sample;
   w_t  w_sample;

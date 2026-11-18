@@ -1,23 +1,15 @@
 `include "cc/assertions.svh"
 `include "amba/axi5_lite.svh"
 
-module axi5_lite_monitor #(
-    parameter  type req_user_t  = logic,
-    parameter  type data_user_t = logic,
-    parameter  type resp_user_t = logic,
-    localparam type r_user_t    = `AMBA_AXI5_LITE_R_USER_TYPE(data_user_t, resp_user_t)
-) (
+module axi5_lite_monitor (
     axi5_lite_if.monitor axi
 );
-  typedef `AMBA_AXI5_LITE_AW_TYPE(axi, req_user_t) aw_t;
-  typedef `AMBA_AXI5_LITE_W_TYPE(axi, data_user_t) w_t;
-  typedef `AMBA_AXI5_LITE_B_TYPE(axi, resp_user_t) b_t;
-  typedef `AMBA_AXI5_LITE_AR_TYPE(axi, req_user_t) ar_t;
-  typedef `AMBA_AXI5_LITE_R_TYPE(axi, r_user_t) r_t;
-  typedef axi5_verify_pkg::lite_types#(
-      .ADDR_WIDTH($bits(axi.AWADDR)),
-      .DATA_WIDTH($bits(axi.WDATA))
-  ) types_t;
+  typedef `AMBA_AXI5_LITE_AW_TYPE(axi) aw_t;
+  typedef `AMBA_AXI5_LITE_W_TYPE(axi) w_t;
+  typedef `AMBA_AXI5_LITE_B_TYPE(axi) b_t;
+  typedef `AMBA_AXI5_LITE_AR_TYPE(axi) ar_t;
+  typedef `AMBA_AXI5_LITE_R_TYPE(axi) r_t;
+  typedef logic [$bits(axi.WSTRB)-1:0] strb_t;
   typedef struct packed {
     aw_t aw;
     w_t  w;
@@ -76,11 +68,9 @@ module axi5_lite_monitor #(
       aw_checked.size = axi5_pkg::SIZE_1B;
       ar_checked.size = axi5_pkg::SIZE_1B;
     end
-    if (axi.ID_W_WIDTH == 0) begin
+    if (!axi.OO_EN_ID) begin
       aw_checked.id = '0;
       b_checked.id  = '0;
-    end
-    if (axi.ID_R_WIDTH == 0) begin
       ar_checked.id = '0;
       r_checked.id  = '0;
     end
@@ -104,7 +94,7 @@ module axi5_lite_monitor #(
       ar_checked.trace = 1'b0;
       r_checked.trace  = 1'b0;
     end
-    if (axi.SUBSYSID_WIDTH == 0) begin
+    if (!axi.O_EN_SUBSYSTEM) begin
       aw_checked.subsys_id = '0;
       ar_checked.subsys_id = '0;
     end
@@ -207,21 +197,12 @@ module axi5_lite_monitor #(
         request.aw = aw_pending.pop_front();
         request.w  = w_pending.pop_front();
         if (axi.O_EN_SIZE && axi.O_EN_STRB)
-          df_verify_pkg::check((request.w.strb & ~types_t::byte_lanes(
-                               request.aw.addr, request.aw.size)) === '0,
+          df_verify_pkg::check((request.w.strb & ~strb_t'(axi5_pkg::lite_byte_lanes(
+                               64'(request.aw.addr), request.aw.size, $bits(axi.WDATA)))) === '0,
                                "WSTRB exceeds the addressed transfer lanes");
         writes_pending.push_back(request);
       end
     end
-  end
-
-  initial begin
-    df_verify_pkg::check($bits(axi.AWUSER) == $bits(req_user_t) && $bits(axi.ARUSER) == $bits(
-                         req_user_t) && $bits(axi.WUSER) == $bits(data_user_t) && $bits(axi.BUSER
-                         ) == $bits(resp_user_t) && $bits(axi.RUSER) == $bits(r_user_t),
-                         "Monitor USER type width mismatch");
-    df_verify_pkg::check($bits(axi.AWID) == $bits(axi.BID) && $bits(axi.ARID) == $bits(axi.RID),
-                         "Monitor response ID width mismatch");
   end
 
   always @(posedge axi.ACLK) begin
