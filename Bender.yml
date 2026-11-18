@@ -13,6 +13,7 @@ export_include_dirs:
 sources:
   - rtl/pkgs/axi5_pkg.sv
   - rtl/protocols/**/*.sv
+  - rtl/adapters/**/*.sv
   - rtl/endpoints/**/*.sv
   - target: verify
     files:

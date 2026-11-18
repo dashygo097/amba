@@ -6,13 +6,15 @@ interface axi5_lite_if #(
     parameter  int unsigned ADDR_WIDTH     = 32,
     // AXI5-Lite Data Bus Width Options
     parameter  bit          O_EN_SIZE      = 1'b0,
+    // AXI5-Lite Write Strobe Options
+    parameter  bit          O_EN_STRB      = 1'b1,
     // AXI5-Lite Prot Options
     parameter  bit          OI_EN_PROT     = 1'b0,
     // AXI5-Lite ID Options
     parameter  bit          OO_EN_ID       = 1'b0,
     parameter  int unsigned ID_WIDTH       = 1,
-    parameter  int unsigned ID_W_WIDTH     = OO_EN_ID ? ID_WIDTH : 0,
-    parameter  int unsigned ID_R_WIDTH     = OO_EN_ID ? ID_WIDTH : 0,
+    parameter  int unsigned ID_W_WIDTH     = OO_EN_ID ? ID_WIDTH : 1,
+    parameter  int unsigned ID_R_WIDTH     = OO_EN_ID ? ID_WIDTH : 1,
     // AXI5-Lite User Options
     parameter  bit          O_EN_USER      = 1'b0,
     parameter  type         req_user_t     = logic,
@@ -26,9 +28,8 @@ interface axi5_lite_if #(
     // AXI5-Lite Wakeup Options
     parameter  bit          O_EN_WAKEUP    = 1'b0,
     // AXI5-Lite Subsystem ID Options
-    parameter  int unsigned SUBSYSID_WIDTH = 0,
-    // AXI5-Lite Write Strobe Options
-    parameter  bit          O_EN_STRB      = 1'b1
+    parameter  bit          O_EN_SUBSYSTEM = 1'b0,
+    parameter  int unsigned SUBSYSID_WIDTH = 1
 ) (
     // GLOBAL
     input logic ACLK,

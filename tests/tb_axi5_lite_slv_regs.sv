@@ -57,21 +57,21 @@ module tb_axi5_lite_slv_regs #(
   logic clk_i = 1'b0;
   logic rst_n_i;
   axi5_lite_if #(
-      .ADDR_WIDTH(AddrWidth),
-      .DATA_WIDTH(DataWidth),
-      .O_EN_STRB(ENABLE_STRB),
-      .O_EN_SIZE(ENABLE_SIZE),
-      .OI_EN_PROT(ENABLE_SIDEBANDS),
-      .OO_EN_ID(ENABLE_SIDEBANDS),
-      .ID_W_WIDTH(ENABLE_SIDEBANDS ? 5 : 0),
-      .ID_R_WIDTH(ENABLE_SIDEBANDS ? 3 : 0),
-      .OO_EN_IDUNQ(ENABLE_SIDEBANDS),
-      .O_EN_USER(ENABLE_SIDEBANDS),
-      .O_EN_WAKEUP(ENABLE_SIDEBANDS),
+      .ADDR_WIDTH    (AddrWidth),
+      .DATA_WIDTH    (DataWidth),
+      .O_EN_STRB     (ENABLE_STRB),
+      .O_EN_SIZE     (ENABLE_SIZE),
+      .OI_EN_PROT    (ENABLE_SIDEBANDS),
+      .OO_EN_ID      (ENABLE_SIDEBANDS),
+      .ID_W_WIDTH    (ENABLE_SIDEBANDS ? 5 : 0),
+      .ID_R_WIDTH    (ENABLE_SIDEBANDS ? 3 : 0),
+      .OO_EN_IDUNQ   (ENABLE_SIDEBANDS),
+      .O_EN_USER     (ENABLE_SIDEBANDS),
+      .O_EN_WAKEUP   (ENABLE_SIDEBANDS),
       .SUBSYSID_WIDTH(ENABLE_SIDEBANDS ? 4 : 0),
-      .req_user_t(req_user_t),
-      .data_user_t(data_user_t),
-      .resp_user_t(resp_user_t)
+      .req_user_t    (req_user_t),
+      .data_user_t   (data_user_t),
+      .resp_user_t   (resp_user_t)
   ) axi (
       .ACLK(clk_i),
       .ARESETn(rst_n_i)
@@ -86,20 +86,20 @@ module tb_axi5_lite_slv_regs #(
       .axi(axi)
   );
   axi5_lite_slv_regs #(
-      .ADDR_WIDTH(AddrWidth),
-      .DATA_WIDTH(DataWidth),
-      .NUM_REGS(NumRegs),
-      .BASE_ADDR(BaseAddr),
-      .OFFSET_CFG(OffsetCfg),
-      .RESET_CFG(ResetCfg),
-      .READ_CFG(ReadCfg),
-      .RW_CFG(RwCfg),
-      .W1C_CFG(W1cCfg),
-      .W1S_CFG(W1sCfg),
-      .RC_CFG(RcCfg),
-      .req_user_t(req_user_t),
+      .ADDR_WIDTH (AddrWidth),
+      .DATA_WIDTH (DataWidth),
+      .req_user_t (req_user_t),
       .data_user_t(data_user_t),
-      .resp_user_t(resp_user_t)
+      .resp_user_t(resp_user_t),
+      .NUM_REGS   (NumRegs),
+      .BASE_ADDR  (BaseAddr),
+      .OFFSET_CFG (OffsetCfg),
+      .RESET_CFG  (ResetCfg),
+      .READ_CFG   (ReadCfg),
+      .RW_CFG     (RwCfg),
+      .W1C_CFG    (W1cCfg),
+      .W1S_CFG    (W1sCfg),
+      .RC_CFG     (RcCfg)
   ) dut (
       .axi(axi)
   );
