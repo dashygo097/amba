@@ -1,6 +1,6 @@
 packages:
   common_cells:
-    revision: 9f99b892012893d0f0a16da25f494a749e393aaa
+    revision: 6ae491a85b70f6fe7475d2c50f6625c53661c5a7
     version: null
     source:
       Git: https://github.com/dashygo097/common_cells.git
