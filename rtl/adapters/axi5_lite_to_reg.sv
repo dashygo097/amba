@@ -5,14 +5,18 @@
 
 // spyglass disable_block W240,W528
 module axi5_lite_to_reg #(
-    parameter axi5_pkg::prot_t                             READ_PROT_MASK   = '0,
-    parameter axi5_pkg::prot_t                             READ_PROT_VALUE  = '0,
-    parameter axi5_pkg::prot_t                             WRITE_PROT_MASK  = '0,
-    parameter axi5_pkg::prot_t                             WRITE_PROT_VALUE = '0,
-    parameter logic            [$bits(axi.AWSUBSYSID)-1:0] SUBSYSID_MASK    = '0,
-    parameter logic            [$bits(axi.AWSUBSYSID)-1:0] SUBSYSID_VALUE   = '0,
-    parameter logic            [     $bits(axi.BUSER)-1:0] BUSER_VALUE      = '0,
-    parameter logic            [     $bits(axi.RUSER)-1:0] RUSER_VALUE      = '0
+    localparam type subsys_id_t = logic [$bits(axi.AWSUBSYSID)-1:0],
+    localparam type buser_t     = logic [     $bits(axi.BUSER)-1:0],
+    localparam type ruser_t     = logic [     $bits(axi.RUSER)-1:0],
+
+    parameter axi5_pkg::prot_t                          READ_PROT_MASK   = '0,
+    parameter axi5_pkg::prot_t                          READ_PROT_VALUE  = '0,
+    parameter axi5_pkg::prot_t                          WRITE_PROT_MASK  = '0,
+    parameter axi5_pkg::prot_t                          WRITE_PROT_VALUE = '0,
+    parameter logic            [$bits(subsys_id_t)-1:0] SUBSYSID_MASK    = '0,
+    parameter logic            [$bits(subsys_id_t)-1:0] SUBSYSID_VALUE   = '0,
+    parameter logic            [    $bits(buser_t)-1:0] BUSER_VALUE      = '0,
+    parameter logic            [    $bits(ruser_t)-1:0] RUSER_VALUE      = '0
 ) (
     axi5_lite_if.sink   axi,
     handshake_if.source reg_req,
@@ -29,7 +33,6 @@ module axi5_lite_to_reg #(
   typedef logic [$bits(axi.AWADDR)-1:0] addr_t;
   typedef logic [$bits(axi.WDATA)-1:0] data_t;
   typedef logic [$bits(axi.WSTRB)-1:0] strb_t;
-  typedef logic [$bits(axi.AWSUBSYSID)-1:0] subsys_id_t;
   typedef `CC_REG_BANK_REQ_TYPE(addr_t, data_t, strb_t) req_t;
   typedef `CC_REG_BANK_RESP_TYPE(data_t) resp_t;
   typedef `AMBA_AXI5_LITE_AW_TYPE(axi) aw_t;
