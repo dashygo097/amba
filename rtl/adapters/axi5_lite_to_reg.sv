@@ -4,20 +4,7 @@
 `include "amba/axi5_lite.svh"
 
 // spyglass disable_block W240,W528
-module axi5_lite_to_reg #(
-    localparam type subsys_id_t = logic [$bits(axi.AWSUBSYSID)-1:0],
-    localparam type buser_t     = logic [     $bits(axi.BUSER)-1:0],
-    localparam type ruser_t     = logic [     $bits(axi.RUSER)-1:0],
-
-    parameter axi5_pkg::prot_t                          READ_PROT_MASK   = '0,
-    parameter axi5_pkg::prot_t                          READ_PROT_VALUE  = '0,
-    parameter axi5_pkg::prot_t                          WRITE_PROT_MASK  = '0,
-    parameter axi5_pkg::prot_t                          WRITE_PROT_VALUE = '0,
-    parameter logic            [$bits(subsys_id_t)-1:0] SUBSYSID_MASK    = '0,
-    parameter logic            [$bits(subsys_id_t)-1:0] SUBSYSID_VALUE   = '0,
-    parameter logic            [    $bits(buser_t)-1:0] BUSER_VALUE      = '0,
-    parameter logic            [    $bits(ruser_t)-1:0] RUSER_VALUE      = '0
-) (
+module axi5_lite_to_reg (
     axi5_lite_if.sink   axi,
     handshake_if.source reg_req,
     handshake_if.sink   reg_resp
@@ -63,14 +50,12 @@ module axi5_lite_to_reg #(
   b_t b_in, b_out;
   r_t r_in, r_out;
   strb_t write_lanes;
-  axi5_pkg::prot_t access_prot, prot_mask, prot_value;
-  subsys_id_t access_subsys_id;
 
   logic aw_valid_d, aw_valid_r, aw_push, aw_pop;
   logic w_valid_d, w_valid_r, w_push, w_pop;
   logic ar_valid_d, ar_valid_r, ar_push, ar_pop;
   logic write_valid, select_write, prefer_write_r;
-  logic size_error, prot_error, subsys_error;
+  logic size_error;
   logic cmd_valid_d, cmd_valid_r, cmd_ready, cmd_push, cmd_pop;
   logic owner_valid_d, owner_valid_r, owner_ready;
   logic issue_fire, reject_fire, response_fire;
@@ -134,14 +119,6 @@ module axi5_lite_to_reg #(
 
     write_lanes = axi.O_EN_SIZE ?
         strb_t'(axi5_pkg::lite_byte_lanes(64'(aw_r.addr), aw_r.size, DataWidth)) : '1;
-    access_prot = select_write ? aw_r.prot : ar_r.prot;
-    prot_mask = select_write ? WRITE_PROT_MASK : READ_PROT_MASK;
-    prot_value = select_write ? WRITE_PROT_VALUE : READ_PROT_VALUE;
-    prot_error = (|prot_mask) &&
-        (!axi.OI_EN_PROT || (access_prot & prot_mask) != (prot_value & prot_mask));
-    access_subsys_id = select_write ? aw_r.subsys_id : ar_r.subsys_id;
-    subsys_error = (|SUBSYSID_MASK) && (!axi.O_EN_SUBSYSTEM ||
-        (access_subsys_id & SUBSYSID_MASK) != (SUBSYSID_VALUE & SUBSYSID_MASK));
     cmd_d.req = '{
         addr: (select_write ? aw_r.addr : ar_r.addr) & ~addr_t'(StrbWidth - 1),
         write: select_write,
@@ -153,7 +130,7 @@ module axi5_lite_to_reg #(
         id: select_write ? IdWidth'(aw_r.id) : IdWidth'(ar_r.id),
         idunq: select_write ? aw_r.idunq : ar_r.idunq,
         trace: select_write ? aw_r.trace : ar_r.trace,
-        local_error: size_error || prot_error || subsys_error
+        local_error: size_error
     };
   end
 
@@ -193,7 +170,7 @@ module axi5_lite_to_reg #(
         id: WriteIdWidth'(owner_r.id),
         idunq: owner_r.idunq,
         trace: owner_r.trace,
-        user: axi.O_EN_USER ? BUSER_VALUE : '0,
+        user: '0,
         default: '0
     };
     r_in = '{
@@ -202,7 +179,7 @@ module axi5_lite_to_reg #(
         id: ReadIdWidth'(owner_r.id),
         idunq: owner_r.idunq,
         trace: owner_r.trace,
-        user: axi.O_EN_USER ? RUSER_VALUE : '0,
+        user: '0,
         default: '0
     };
     b_req.valid = response_valid && owner_r.write;
@@ -242,11 +219,6 @@ module axi5_lite_to_reg #(
 
   `ASSERT_INIT(RequestPayloadWidth, $bits(reg_req.payload) == $bits(req_t))
   `ASSERT_INIT(ResponsePayloadWidth, $bits(reg_resp.payload) == $bits(resp_t))
-  `ASSERT_INIT(ProtFilterRequiresProt, (READ_PROT_MASK | WRITE_PROT_MASK) == '0 || axi.OI_EN_PROT)
-  `ASSERT_INIT(SubsysFilterRequiresSubsystem, SUBSYSID_MASK == '0 || axi.O_EN_SUBSYSTEM)
-  `ASSERT_INIT(PolicyKnown, !$isunknown({READ_PROT_MASK, READ_PROT_VALUE, WRITE_PROT_MASK,
-                                         WRITE_PROT_VALUE, SUBSYSID_MASK, SUBSYSID_VALUE,
-                                         BUSER_VALUE, RUSER_VALUE}))
 
   `ASSERT(RequestStable, reg_req.valid && !reg_req.ready |=> reg_req.valid && $stable
                          (reg_req.payload), axi.ACLK, axi.ARESETn)
